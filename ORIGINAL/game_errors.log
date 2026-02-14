@@ -1,0 +1,9 @@
+FATAL ERROR in
+action number 1
+of Other Event: User Defined 1
+for object TwinAutocannon:
+
+COMPILATION ERROR in code actionError in code at line 27:   
+  bullet = instance_create(x+lengthdir_x(10,image_angle-25)y+lengthdir_y(10,image_angle-25),l_bullet)at position 61: Symbol , or ) expected.
+
+
