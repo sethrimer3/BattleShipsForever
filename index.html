@@ -4,98 +4,223 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Battleships Forever - HTML5 Edition</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #000;
+            cursor: crosshair;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 2px solid #00ff00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        #controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            background: #004400;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #006600;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        .btn:active {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        #info {
+            font-family: monospace;
+            font-size: 14px;
+            color: #00ff00;
+        }
+        
+        #shipBuilder {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            display: none;
+            z-index: 20;
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+        
+        #shipBuilder.active {
+            display: block;
+        }
+        
+        #shipBuilder h3 {
+            color: #00ff00;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 5px;
+        }
+        
+        .section-category {
+            margin: 10px 0;
+        }
+        
+        .section-category h4 {
+            color: #00cc00;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .section-btn {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 2px;
+            background: #003300;
+            border: 1px solid #006600;
+            color: #00ff00;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .section-btn:hover {
+            background: #004400;
+            border-color: #00ff00;
+        }
+        
+        .section-btn.selected {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #00cc00;
+            max-width: 400px;
+        }
+        
+        #instructions h4 {
+            color: #00ff00;
+            margin-bottom: 5px;
+        }
+        
+        #instructions ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        #instructions li {
+            padding: 2px 0;
+        }
+        
+        .key {
+            color: #00ff00;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>⚓ Battleships Forever ⚓</h1>
-            <p class="subtitle">HTML5 Edition - Play in your browser!</p>
-        </header>
-
-        <div id="game-screen" class="screen active">
-            <div class="game-info">
-                <div class="status-panel">
-                    <h2 id="game-status">Place Your Ships</h2>
-                    <p id="game-message">Click and drag to place ships on your grid</p>
-                    <button id="rotate-btn" class="btn">Rotate Ship (R)</button>
-                    <button id="random-btn" class="btn">Random Placement</button>
-                    <button id="start-btn" class="btn btn-primary" disabled>Start Battle!</button>
-                </div>
-                
-                <div class="stats-panel">
-                    <div class="stat">
-                        <span class="stat-label">Ships Remaining:</span>
-                        <span id="player-ships">5</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Enemy Ships:</span>
-                        <span id="enemy-ships">5</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Shots Fired:</span>
-                        <span id="shots-fired">0</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="game-boards">
-                <div class="board-container">
-                    <h3>Your Fleet</h3>
-                    <div id="player-board" class="board"></div>
-                </div>
-                
-                <div class="board-container">
-                    <h3>Enemy Waters</h3>
-                    <div id="enemy-board" class="board"></div>
-                </div>
-            </div>
-
-            <div class="ships-to-place">
-                <h3>Ships to Place:</h3>
-                <div id="ship-list">
-                    <div class="ship-item" data-ship="carrier">
-                        <span class="ship-icon">🚢</span>
-                        <span>Carrier (5)</span>
-                    </div>
-                    <div class="ship-item" data-ship="battleship">
-                        <span class="ship-icon">🚢</span>
-                        <span>Battleship (4)</span>
-                    </div>
-                    <div class="ship-item" data-ship="cruiser">
-                        <span class="ship-icon">🚤</span>
-                        <span>Cruiser (3)</span>
-                    </div>
-                    <div class="ship-item" data-ship="submarine">
-                        <span class="ship-icon">🛥️</span>
-                        <span>Submarine (3)</span>
-                    </div>
-                    <div class="ship-item" data-ship="destroyer">
-                        <span class="ship-icon">⛵</span>
-                        <span>Destroyer (2)</span>
-                    </div>
-                </div>
-            </div>
+    <div id="ui">
+        <div id="controls">
+            <button class="btn" onclick="game.toggleShipBuilder()">Ship Builder</button>
+            <button class="btn" onclick="game.spawnPlayerShip()">Deploy Ship</button>
+            <button class="btn" onclick="game.spawnEnemyShip()">Spawn Enemy</button>
+            <button class="btn" onclick="game.reset()">Reset</button>
         </div>
-
-        <div id="game-over-screen" class="screen">
-            <div class="game-over-content">
-                <h2 id="game-over-title">Game Over</h2>
-                <p id="game-over-message"></p>
-                <div class="final-stats">
-                    <p>Shots Fired: <span id="final-shots">0</span></p>
-                    <p>Accuracy: <span id="final-accuracy">0%</span></p>
-                </div>
-                <button id="play-again-btn" class="btn btn-primary">Play Again</button>
-            </div>
+        <div id="info">
+            <span id="fps">FPS: 0</span> | 
+            <span id="shipCount">Ships: 0</span> |
+            <span id="mode">Mode: Sandbox</span>
         </div>
     </div>
-
-    <footer>
-        <p>Based on the original Battleships Forever by Sean "th15" Chan</p>
-        <p>HTML5 Edition - Open Source on GitHub</p>
-    </footer>
-
+    
+    <div id="shipBuilder">
+        <h3>Ship Builder</h3>
+        <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
+            Select sections to build your ship. Click on canvas to place.
+        </p>
+        
+        <div class="section-category">
+            <h4>CORE SECTIONS</h4>
+            <button class="section-btn" data-type="core" data-size="large">Large Core</button>
+            <button class="section-btn" data-type="core" data-size="medium">Medium Core</button>
+            <button class="section-btn" data-type="core" data-size="small">Small Core</button>
+        </div>
+        
+        <div class="section-category">
+            <h4>WEAPON SECTIONS</h4>
+            <button class="section-btn" data-type="cannon">Cannon</button>
+            <button class="section-btn" data-type="laser">Laser</button>
+            <button class="section-btn" data-type="missile">Missile</button>
+            <button class="section-btn" data-type="railgun">Railgun</button>
+        </div>
+        
+        <div class="section-category">
+            <h4>UTILITY SECTIONS</h4>
+            <button class="section-btn" data-type="engine">Engine</button>
+            <button class="section-btn" data-type="shield">Shield</button>
+            <button class="section-btn" data-type="armor">Armor</button>
+        </div>
+        
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #004400;">
+            <button class="btn" style="width: 100%;" onclick="game.saveCurrentShip()">Save Ship Design</button>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        <h4>CONTROLS</h4>
+        <ul>
+            <li><span class="key">WASD</span> - Move selected ship</li>
+            <li><span class="key">Q/E</span> - Rotate ship</li>
+            <li><span class="key">SPACE</span> - Fire weapons</li>
+            <li><span class="key">Click</span> - Select ship</li>
+            <li><span class="key">Right Click</span> - Move order</li>
+            <li><span class="key">Shift+Click</span> - Add to selection</li>
+        </ul>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+    
     <script src="game.js"></script>
 </body>
 </html>

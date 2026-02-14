@@ -1,466 +1,708 @@
-// Battleships Forever - HTML5 Edition
-// Game Logic
+// Battleships Forever - HTML5 Space RTS Edition
+// A web-based recreation inspired by the original Battleships Forever
 
-class BattleshipsGame {
-    constructor() {
-        this.boardSize = 10;
-        this.ships = {
-            carrier: { name: 'Carrier', size: 5, icon: '🚢' },
-            battleship: { name: 'Battleship', size: 4, icon: '🚢' },
-            cruiser: { name: 'Cruiser', size: 3, icon: '🚤' },
-            submarine: { name: 'Submarine', size: 3, icon: '🛥️' },
-            destroyer: { name: 'Destroyer', size: 2, icon: '⛵' }
-        };
-        
-        this.playerBoard = this.createBoard();
-        this.enemyBoard = this.createBoard();
-        this.playerShips = [];
-        this.enemyShips = [];
-        this.currentShip = null;
-        this.isHorizontal = true;
-        this.gameStarted = false;
-        this.isPlayerTurn = true;
-        this.shotsFired = 0;
-        this.hits = 0;
-        
-        this.initializeUI();
-        this.placeEnemyShips();
+class Vector2 {
+    constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
     }
     
-    createBoard() {
-        const board = [];
-        for (let i = 0; i < this.boardSize; i++) {
-            board[i] = [];
-            for (let j = 0; j < this.boardSize; j++) {
-                board[i][j] = {
-                    hasShip: false,
-                    isHit: false,
-                    shipId: null
-                };
-            }
+    add(v) {
+        return new Vector2(this.x + v.x, this.y + v.y);
+    }
+    
+    subtract(v) {
+        return new Vector2(this.x - v.x, this.y - v.y);
+    }
+    
+    multiply(scalar) {
+        return new Vector2(this.x * scalar, this.y * scalar);
+    }
+    
+    length() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+    
+    normalize() {
+        const len = this.length();
+        if (len === 0) return new Vector2(0, 0);
+        return new Vector2(this.x / len, this.y / len);
+    }
+    
+    rotate(angle) {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        return new Vector2(
+            this.x * cos - this.y * sin,
+            this.x * sin + this.y * cos
+        );
+    }
+}
+
+class ShipSection {
+    constructor(type, size, x, y) {
+        this.type = type;
+        this.size = size || 'medium';
+        this.localX = x;
+        this.localY = y;
+        this.health = 100;
+        this.maxHealth = 100;
+        
+        // Different properties based on type
+        switch(type) {
+            case 'core':
+                this.health = size === 'large' ? 200 : size === 'medium' ? 150 : 100;
+                this.color = '#00ff00';
+                this.radius = size === 'large' ? 30 : size === 'medium' ? 20 : 15;
+                break;
+            case 'cannon':
+                this.color = '#ff4400';
+                this.radius = 12;
+                this.fireRate = 500; // ms
+                this.lastFired = 0;
+                this.damage = 20;
+                break;
+            case 'laser':
+                this.color = '#00ffff';
+                this.radius = 10;
+                this.fireRate = 200;
+                this.lastFired = 0;
+                this.damage = 10;
+                break;
+            case 'missile':
+                this.color = '#ffff00';
+                this.radius = 15;
+                this.fireRate = 2000;
+                this.lastFired = 0;
+                this.damage = 50;
+                break;
+            case 'railgun':
+                this.color = '#ff00ff';
+                this.radius = 8;
+                this.fireRate = 1500;
+                this.lastFired = 0;
+                this.damage = 40;
+                break;
+            case 'engine':
+                this.color = '#0088ff';
+                this.radius = 12;
+                this.thrust = 50;
+                break;
+            case 'shield':
+                this.color = '#88ccff';
+                this.radius = 15;
+                this.shieldStrength = 50;
+                break;
+            case 'armor':
+                this.color = '#888888';
+                this.radius = 12;
+                this.armorValue = 30;
+                break;
+            default:
+                this.color = '#666666';
+                this.radius = 10;
         }
-        return board;
-    }
-    
-    initializeUI() {
-        this.createBoardUI('player-board', true);
-        this.createBoardUI('enemy-board', false);
-        this.setupEventListeners();
-        this.updateShipList();
-    }
-    
-    createBoardUI(boardId, isPlayerBoard) {
-        const boardElement = document.getElementById(boardId);
-        boardElement.innerHTML = '';
         
-        for (let row = 0; row < this.boardSize; row++) {
-            for (let col = 0; col < this.boardSize; col++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.row = row;
-                cell.dataset.col = col;
-                cell.dataset.board = isPlayerBoard ? 'player' : 'enemy';
-                
-                if (isPlayerBoard) {
-                    cell.addEventListener('mouseenter', (e) => this.handleCellHover(e));
-                    cell.addEventListener('mouseleave', (e) => this.handleCellLeave(e));
-                    cell.addEventListener('click', (e) => this.handleCellClick(e));
-                } else {
-                    cell.addEventListener('click', (e) => this.handleEnemyBoardClick(e));
+        this.maxHealth = this.health;
+    }
+}
+
+class Ship {
+    constructor(x, y, team = 'player') {
+        this.position = new Vector2(x, y);
+        this.velocity = new Vector2(0, 0);
+        this.angle = 0;
+        this.angularVelocity = 0;
+        this.team = team;
+        this.selected = false;
+        this.sections = [];
+        this.targetPosition = null;
+        this.targetEnemy = null;
+        
+        // Add a default core section
+        this.addSection(new ShipSection('core', 'medium', 0, 0));
+        
+        // Ship properties (calculated from sections)
+        this.updateProperties();
+    }
+    
+    addSection(section) {
+        this.sections.push(section);
+        this.updateProperties();
+    }
+    
+    updateProperties() {
+        // Calculate total mass, thrust, health, etc from sections
+        this.totalMass = this.sections.length * 10;
+        this.totalThrust = this.sections
+            .filter(s => s.type === 'engine')
+            .reduce((sum, s) => sum + (s.thrust || 0), 50); // base thrust
+        
+        this.maxHealth = this.sections.reduce((sum, s) => sum + s.maxHealth, 0);
+        this.health = this.sections.reduce((sum, s) => sum + s.health, 0);
+        
+        this.alive = this.health > 0;
+    }
+    
+    update(dt, ships, projectiles) {
+        if (!this.alive) return;
+        
+        // AI behavior for enemy ships
+        if (this.team === 'enemy' && !this.targetEnemy) {
+            const playerShips = ships.filter(s => s.team === 'player' && s.alive);
+            if (playerShips.length > 0) {
+                // Find nearest player ship
+                let nearest = null;
+                let minDist = Infinity;
+                for (const ship of playerShips) {
+                    const dist = this.position.subtract(ship.position).length();
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = ship;
+                    }
                 }
-                
-                boardElement.appendChild(cell);
+                this.targetEnemy = nearest;
             }
         }
+        
+        // Move towards target
+        if (this.targetPosition) {
+            const toTarget = this.targetPosition.subtract(this.position);
+            const distance = toTarget.length();
+            
+            if (distance > 10) {
+                const direction = toTarget.normalize();
+                const force = direction.multiply(this.totalThrust / this.totalMass);
+                this.velocity = this.velocity.add(force.multiply(dt));
+                
+                // Rotate towards movement direction
+                const targetAngle = Math.atan2(direction.y, direction.x);
+                let angleDiff = targetAngle - this.angle;
+                while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                this.angle += angleDiff * 0.05;
+            } else {
+                this.targetPosition = null;
+            }
+        }
+        
+        // Attack target enemy
+        if (this.targetEnemy && this.targetEnemy.alive) {
+            const toEnemy = this.targetEnemy.position.subtract(this.position);
+            const distance = toEnemy.length();
+            
+            // Rotate to face enemy
+            const targetAngle = Math.atan2(toEnemy.y, toEnemy.x);
+            let angleDiff = targetAngle - this.angle;
+            while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+            while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+            this.angle += angleDiff * 0.08;
+            
+            // Fire weapons if in range and facing target
+            if (distance < 400 && Math.abs(angleDiff) < 0.3) {
+                this.fireWeapons(projectiles, Date.now());
+            }
+            
+            // Move towards enemy if too far
+            if (distance > 300) {
+                this.targetPosition = this.targetEnemy.position;
+            }
+        } else if (this.targetEnemy) {
+            this.targetEnemy = null;
+        }
+        
+        // Apply drag
+        this.velocity = this.velocity.multiply(0.98);
+        
+        // Update position
+        this.position = this.position.add(this.velocity.multiply(dt));
+        
+        // Update angle
+        this.angle += this.angularVelocity * dt;
+        this.angularVelocity *= 0.95;
+        
+        this.updateProperties();
+    }
+    
+    fireWeapons(projectiles, currentTime) {
+        for (const section of this.sections) {
+            if (['cannon', 'laser', 'missile', 'railgun'].includes(section.type)) {
+                if (currentTime - section.lastFired > section.fireRate) {
+                    section.lastFired = currentTime;
+                    
+                    // Calculate weapon position in world space
+                    const rotated = new Vector2(section.localX, section.localY).rotate(this.angle);
+                    const worldPos = this.position.add(rotated);
+                    
+                    // Create projectile
+                    const projectile = {
+                        position: worldPos,
+                        velocity: new Vector2(Math.cos(this.angle), Math.sin(this.angle))
+                            .multiply(section.type === 'missile' ? 150 : section.type === 'railgun' ? 500 : 300),
+                        damage: section.damage,
+                        type: section.type,
+                        team: this.team,
+                        life: section.type === 'laser' ? 0.5 : 2,
+                        createdAt: currentTime / 1000
+                    };
+                    
+                    projectiles.push(projectile);
+                }
+            }
+        }
+    }
+    
+    takeDamage(damage) {
+        if (this.sections.length === 0) {
+            this.alive = false;
+            return;
+        }
+        
+        // Damage a random section
+        const section = this.sections[Math.floor(Math.random() * this.sections.length)];
+        section.health -= damage;
+        
+        if (section.health <= 0) {
+            // Remove destroyed section
+            const index = this.sections.indexOf(section);
+            this.sections.splice(index, 1);
+            
+            // If core is destroyed or no sections left, ship is destroyed
+            if (this.sections.length === 0 || !this.sections.some(s => s.type === 'core')) {
+                this.alive = false;
+            }
+        }
+        
+        this.updateProperties();
+    }
+    
+    draw(ctx, camera) {
+        if (!this.alive) return;
+        
+        ctx.save();
+        ctx.translate(
+            this.position.x - camera.x,
+            this.position.y - camera.y
+        );
+        ctx.rotate(this.angle);
+        
+        // Draw sections
+        for (const section of this.sections) {
+            // Section glow
+            const gradient = ctx.createRadialGradient(
+                section.localX, section.localY, 0,
+                section.localX, section.localY, section.radius
+            );
+            gradient.addColorStop(0, section.color);
+            gradient.addColorStop(0.7, section.color + '88');
+            gradient.addColorStop(1, section.color + '00');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(section.localX, section.localY, section.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Section outline
+            ctx.strokeStyle = section.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(section.localX, section.localY, section.radius * 0.7, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Health bar for damaged sections
+            if (section.health < section.maxHealth) {
+                const barWidth = section.radius * 2;
+                const barHeight = 3;
+                const barX = section.localX - barWidth / 2;
+                const barY = section.localY - section.radius - 8;
+                
+                ctx.fillStyle = '#330000';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                
+                ctx.fillStyle = '#ff0000';
+                const healthWidth = (section.health / section.maxHealth) * barWidth;
+                ctx.fillRect(barX, barY, healthWidth, barHeight);
+            }
+        }
+        
+        // Selection indicator
+        if (this.selected) {
+            ctx.strokeStyle = this.team === 'player' ? '#00ff00' : '#ff0000';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            const size = Math.max(...this.sections.map(s => 
+                Math.sqrt(s.localX * s.localX + s.localY * s.localY) + s.radius
+            ));
+            ctx.beginPath();
+            ctx.arc(0, 0, size + 10, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        ctx.restore();
+    }
+}
+
+class BattleshipsForeverGame {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        this.resizeCanvas();
+        window.addEventListener('resize', () => this.resizeCanvas());
+        
+        this.camera = new Vector2(0, 0);
+        this.ships = [];
+        this.projectiles = [];
+        this.particles = [];
+        
+        this.selectedShips = [];
+        this.shipBuilderActive = false;
+        this.selectedSection = null;
+        this.currentShipDesign = [];
+        
+        this.keys = {};
+        this.mouse = new Vector2(0, 0);
+        
+        this.lastTime = performance.now();
+        this.fps = 0;
+        this.frameCount = 0;
+        this.lastFpsUpdate = performance.now();
+        
+        this.setupEventListeners();
+        this.setupShipBuilder();
+        this.gameLoop();
+    }
+    
+    resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
     }
     
     setupEventListeners() {
-        document.getElementById('rotate-btn').addEventListener('click', () => {
-            this.isHorizontal = !this.isHorizontal;
-            this.updateStatusMessage(`Ship orientation: ${this.isHorizontal ? 'Horizontal' : 'Vertical'}`);
-        });
-        
-        document.getElementById('random-btn').addEventListener('click', () => {
-            this.randomPlacement();
-        });
-        
-        document.getElementById('start-btn').addEventListener('click', () => {
-            this.startGame();
-        });
-        
-        document.getElementById('play-again-btn').addEventListener('click', () => {
-            location.reload();
-        });
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'r' || e.key === 'R') {
-                this.isHorizontal = !this.isHorizontal;
-                this.updateStatusMessage(`Ship orientation: ${this.isHorizontal ? 'Horizontal' : 'Vertical'}`);
+        window.addEventListener('keydown', (e) => {
+            this.keys[e.key.toLowerCase()] = true;
+            
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (this.selectedShips.length > 0) {
+                    const now = Date.now();
+                    this.selectedShips.forEach(ship => {
+                        ship.fireWeapons(this.projectiles, now);
+                    });
+                }
             }
         });
         
-        // Ship selection
-        document.querySelectorAll('.ship-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                const shipType = e.currentTarget.dataset.ship;
-                if (!e.currentTarget.classList.contains('placed')) {
-                    this.currentShip = shipType;
-                    document.querySelectorAll('.ship-item').forEach(i => i.classList.remove('selected'));
-                    e.currentTarget.classList.add('selected');
-                    this.updateStatusMessage(`Selected ${this.ships[shipType].name}. Click on the board to place it.`);
+        window.addEventListener('keyup', (e) => {
+            this.keys[e.key.toLowerCase()] = false;
+        });
+        
+        this.canvas.addEventListener('mousemove', (e) => {
+            this.mouse.x = e.clientX;
+            this.mouse.y = e.clientY;
+        });
+        
+        this.canvas.addEventListener('click', (e) => {
+            const worldPos = new Vector2(
+                e.clientX + this.camera.x,
+                e.clientY + this.camera.y
+            );
+            
+            if (!e.shiftKey) {
+                this.selectedShips.forEach(s => s.selected = false);
+                this.selectedShips = [];
+            }
+            
+            // Check if clicking on a ship
+            let clicked = false;
+            for (const ship of this.ships) {
+                if (!ship.alive) continue;
+                
+                const dist = ship.position.subtract(worldPos).length();
+                if (dist < 50) {
+                    ship.selected = !ship.selected;
+                    if (ship.selected && !this.selectedShips.includes(ship)) {
+                        this.selectedShips.push(ship);
+                    } else {
+                        const index = this.selectedShips.indexOf(ship);
+                        if (index > -1) this.selectedShips.splice(index, 1);
+                    }
+                    clicked = true;
+                    break;
                 }
+            }
+        });
+        
+        this.canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            
+            const worldPos = new Vector2(
+                e.clientX + this.camera.x,
+                e.clientY + this.camera.y
+            );
+            
+            // Issue move order to selected ships
+            this.selectedShips.forEach(ship => {
+                ship.targetPosition = worldPos;
             });
         });
     }
     
-    handleCellHover(e) {
-        if (!this.currentShip || this.gameStarted) return;
-        
-        const row = parseInt(e.target.dataset.row);
-        const col = parseInt(e.target.dataset.col);
-        const size = this.ships[this.currentShip].size;
-        
-        const cells = this.getCellsForShip(row, col, size);
-        const isValid = this.canPlaceShip(row, col, size);
-        
-        cells.forEach(([r, c]) => {
-            const cell = document.querySelector(`#player-board .cell[data-row="${r}"][data-col="${c}"]`);
-            if (cell) {
-                cell.classList.add(isValid ? 'hover-preview' : 'hover-invalid');
-            }
+    setupShipBuilder() {
+        document.querySelectorAll('.section-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.section-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                
+                this.selectedSection = {
+                    type: btn.dataset.type,
+                    size: btn.dataset.size || 'medium'
+                };
+            });
         });
     }
     
-    handleCellLeave(e) {
-        document.querySelectorAll('#player-board .cell').forEach(cell => {
-            cell.classList.remove('hover-preview', 'hover-invalid');
-        });
+    toggleShipBuilder() {
+        const builder = document.getElementById('shipBuilder');
+        builder.classList.toggle('active');
+        this.shipBuilderActive = builder.classList.contains('active');
     }
     
-    handleCellClick(e) {
-        if (!this.currentShip || this.gameStarted) return;
+    spawnPlayerShip() {
+        const ship = new Ship(
+            this.canvas.width / 2 + this.camera.x,
+            this.canvas.height / 2 + this.camera.y,
+            'player'
+        );
         
-        const row = parseInt(e.target.dataset.row);
-        const col = parseInt(e.target.dataset.col);
+        // Add some default weapons and systems
+        ship.addSection(new ShipSection('cannon', 'medium', 30, 0));
+        ship.addSection(new ShipSection('cannon', 'medium', -30, 0));
+        ship.addSection(new ShipSection('engine', 'medium', 0, 30));
+        ship.addSection(new ShipSection('shield', 'medium', 0, -30));
         
-        if (this.placeShip(row, col, this.currentShip)) {
-            document.querySelector(`.ship-item[data-ship="${this.currentShip}"]`).classList.add('placed');
-            this.currentShip = null;
-            document.querySelectorAll('.ship-item').forEach(i => i.classList.remove('selected'));
+        this.ships.push(ship);
+        this.updateUI();
+    }
+    
+    spawnEnemyShip() {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 500;
+        
+        const ship = new Ship(
+            this.canvas.width / 2 + this.camera.x + Math.cos(angle) * distance,
+            this.canvas.height / 2 + this.camera.y + Math.sin(angle) * distance,
+            'enemy'
+        );
+        
+        // Enemy ship configuration
+        ship.addSection(new ShipSection('laser', 'medium', 25, 0));
+        ship.addSection(new ShipSection('laser', 'medium', -25, 0));
+        ship.addSection(new ShipSection('missile', 'medium', 0, 25));
+        ship.addSection(new ShipSection('engine', 'medium', 0, -25));
+        
+        this.ships.push(ship);
+        this.updateUI();
+    }
+    
+    reset() {
+        this.ships = [];
+        this.projectiles = [];
+        this.particles = [];
+        this.selectedShips = [];
+        this.camera = new Vector2(0, 0);
+        this.updateUI();
+    }
+    
+    saveCurrentShip() {
+        alert('Ship design saved! (Feature in development)');
+    }
+    
+    update(dt) {
+        // Handle keyboard controls for selected ships
+        if (this.selectedShips.length > 0) {
+            let movement = new Vector2(0, 0);
             
-            if (this.playerShips.length === Object.keys(this.ships).length) {
-                document.getElementById('start-btn').disabled = false;
-                this.updateStatusMessage('All ships placed! Click "Start Battle" to begin.');
-            } else {
-                this.updateStatusMessage('Select another ship to place.');
-            }
-        }
-    }
-    
-    getCellsForShip(row, col, size) {
-        const cells = [];
-        for (let i = 0; i < size; i++) {
-            if (this.isHorizontal) {
-                cells.push([row, col + i]);
-            } else {
-                cells.push([row + i, col]);
-            }
-        }
-        return cells;
-    }
-    
-    canPlaceShip(row, col, size) {
-        const cells = this.getCellsForShip(row, col, size);
-        
-        for (const [r, c] of cells) {
-            if (r < 0 || r >= this.boardSize || c < 0 || c >= this.boardSize) {
-                return false;
-            }
-            if (this.playerBoard[r][c].hasShip) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
-    
-    placeShip(row, col, shipType) {
-        const size = this.ships[shipType].size;
-        
-        if (!this.canPlaceShip(row, col, size)) {
-            this.updateStatusMessage('Cannot place ship here!');
-            return false;
-        }
-        
-        const shipId = `player-${shipType}-${Date.now()}`;
-        const cells = this.getCellsForShip(row, col, size);
-        
-        cells.forEach(([r, c]) => {
-            this.playerBoard[r][c].hasShip = true;
-            this.playerBoard[r][c].shipId = shipId;
+            if (this.keys['w']) movement.y -= 1;
+            if (this.keys['s']) movement.y += 1;
+            if (this.keys['a']) movement.x -= 1;
+            if (this.keys['d']) movement.x += 1;
             
-            const cell = document.querySelector(`#player-board .cell[data-row="${r}"][data-col="${c}"]`);
-            if (cell) {
-                cell.classList.add('ship');
-            }
-        });
-        
-        this.playerShips.push({
-            id: shipId,
-            type: shipType,
-            cells: cells,
-            hits: 0
-        });
-        
-        return true;
-    }
-    
-    placeEnemyShips() {
-        Object.keys(this.ships).forEach(shipType => {
-            let placed = false;
-            let attempts = 0;
-            
-            while (!placed && attempts < 100) {
-                const row = Math.floor(Math.random() * this.boardSize);
-                const col = Math.floor(Math.random() * this.boardSize);
-                const horizontal = Math.random() < 0.5;
-                
-                const tempHorizontal = this.isHorizontal;
-                this.isHorizontal = horizontal;
-                
-                if (this.canPlaceShipOnBoard(this.enemyBoard, row, col, this.ships[shipType].size)) {
-                    const shipId = `enemy-${shipType}-${Date.now()}`;
-                    const cells = this.getCellsForShip(row, col, this.ships[shipType].size);
-                    
-                    cells.forEach(([r, c]) => {
-                        this.enemyBoard[r][c].hasShip = true;
-                        this.enemyBoard[r][c].shipId = shipId;
-                    });
-                    
-                    this.enemyShips.push({
-                        id: shipId,
-                        type: shipType,
-                        cells: cells,
-                        hits: 0
-                    });
-                    
-                    placed = true;
-                }
-                
-                this.isHorizontal = tempHorizontal;
-                attempts++;
-            }
-        });
-    }
-    
-    canPlaceShipOnBoard(board, row, col, size) {
-        const cells = this.getCellsForShip(row, col, size);
-        
-        for (const [r, c] of cells) {
-            if (r < 0 || r >= this.boardSize || c < 0 || c >= this.boardSize) {
-                return false;
-            }
-            if (board[r][c].hasShip) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
-    
-    randomPlacement() {
-        // Clear current ships
-        this.playerShips = [];
-        this.playerBoard = this.createBoard();
-        
-        Object.keys(this.ships).forEach(shipType => {
-            let placed = false;
-            let attempts = 0;
-            
-            while (!placed && attempts < 100) {
-                const row = Math.floor(Math.random() * this.boardSize);
-                const col = Math.floor(Math.random() * this.boardSize);
-                this.isHorizontal = Math.random() < 0.5;
-                
-                if (this.placeShip(row, col, shipType)) {
-                    placed = true;
-                }
-                
-                attempts++;
-            }
-        });
-        
-        document.querySelectorAll('.ship-item').forEach(item => {
-            item.classList.add('placed');
-        });
-        
-        document.getElementById('start-btn').disabled = false;
-        this.updateStatusMessage('Ships randomly placed! Click "Start Battle" to begin.');
-    }
-    
-    startGame() {
-        this.gameStarted = true;
-        document.getElementById('rotate-btn').disabled = true;
-        document.getElementById('random-btn').disabled = true;
-        document.getElementById('start-btn').disabled = true;
-        document.querySelector('.ships-to-place').style.display = 'none';
-        
-        this.updateStatusMessage('Battle has begun! Click on enemy waters to fire.');
-        document.getElementById('game-status').textContent = 'Your Turn';
-    }
-    
-    handleEnemyBoardClick(e) {
-        if (!this.gameStarted || !this.isPlayerTurn) return;
-        
-        const row = parseInt(e.target.dataset.row);
-        const col = parseInt(e.target.dataset.col);
-        
-        if (this.enemyBoard[row][col].isHit) {
-            this.updateStatusMessage('You already fired at this location!');
-            return;
-        }
-        
-        this.playerFire(row, col);
-    }
-    
-    playerFire(row, col) {
-        this.shotsFired++;
-        this.updateStats();
-        
-        const cell = this.enemyBoard[row][col];
-        cell.isHit = true;
-        
-        const cellElement = document.querySelector(`#enemy-board .cell[data-row="${row}"][data-col="${col}"]`);
-        
-        if (cell.hasShip) {
-            this.hits++;
-            cellElement.classList.add('hit');
-            
-            // Find the ship and update hits
-            const ship = this.enemyShips.find(s => s.id === cell.shipId);
-            if (ship) {
-                ship.hits++;
-                
-                if (ship.hits === this.ships[ship.type].size) {
-                    // Ship is sunk
-                    this.updateStatusMessage(`You sank the enemy ${this.ships[ship.type].name}! 💥`);
-                    this.markShipAsSunk(ship, 'enemy');
-                    
-                    const remainingShips = this.enemyShips.filter(s => s.hits < this.ships[s.type].size).length;
-                    
-                    if (remainingShips === 0) {
-                        this.endGame(true);
-                        return;
+            if (movement.length() > 0) {
+                movement = movement.normalize().multiply(200 * dt);
+                this.selectedShips.forEach(ship => {
+                    if (ship.alive) {
+                        ship.velocity = ship.velocity.add(movement);
                     }
-                } else {
-                    this.updateStatusMessage('Direct hit! 💥');
-                }
+                });
             }
-        } else {
-            cellElement.classList.add('miss');
-            this.updateStatusMessage('Miss! 🌊');
-        }
-        
-        this.isPlayerTurn = false;
-        document.getElementById('game-status').textContent = 'Enemy Turn';
-        
-        setTimeout(() => {
-            this.enemyTurn();
-        }, 1000);
-    }
-    
-    enemyTurn() {
-        let row, col;
-        let attempts = 0;
-        
-        // Simple AI: random shots
-        do {
-            row = Math.floor(Math.random() * this.boardSize);
-            col = Math.floor(Math.random() * this.boardSize);
-            attempts++;
-        } while (this.playerBoard[row][col].isHit && attempts < 100);
-        
-        const cell = this.playerBoard[row][col];
-        cell.isHit = true;
-        
-        const cellElement = document.querySelector(`#player-board .cell[data-row="${row}"][data-col="${col}"]`);
-        
-        if (cell.hasShip) {
-            cellElement.classList.add('hit');
             
-            const ship = this.playerShips.find(s => s.id === cell.shipId);
-            if (ship) {
-                ship.hits++;
-                
-                if (ship.hits === this.ships[ship.type].size) {
-                    this.updateStatusMessage(`Enemy sank your ${this.ships[ship.type].name}! 😱`);
-                    this.markShipAsSunk(ship, 'player');
-                    
-                    const remainingShips = this.playerShips.filter(s => s.hits < this.ships[s.type].size).length;
-                    
-                    if (remainingShips === 0) {
-                        this.endGame(false);
-                        return;
-                    }
-                } else {
-                    this.updateStatusMessage('Enemy hit your ship! 💥');
-                }
+            if (this.keys['q']) {
+                this.selectedShips.forEach(ship => {
+                    if (ship.alive) ship.angularVelocity -= 2 * dt;
+                });
             }
-        } else {
-            cellElement.classList.add('miss');
-            this.updateStatusMessage('Enemy missed! 🌊');
+            if (this.keys['e']) {
+                this.selectedShips.forEach(ship => {
+                    if (ship.alive) ship.angularVelocity += 2 * dt;
+                });
+            }
         }
         
-        this.isPlayerTurn = true;
-        document.getElementById('game-status').textContent = 'Your Turn';
-        this.updateStats();
-    }
-    
-    markShipAsSunk(ship, boardType) {
-        ship.cells.forEach(([r, c]) => {
-            const cellElement = document.querySelector(`#${boardType}-board .cell[data-row="${r}"][data-col="${c}"]`);
-            if (cellElement) {
-                cellElement.classList.add('sunk');
+        // Update ships
+        this.ships.forEach(ship => ship.update(dt, this.ships, this.projectiles));
+        
+        // Update projectiles
+        const currentTime = performance.now() / 1000;
+        this.projectiles = this.projectiles.filter(proj => {
+            proj.position = proj.position.add(proj.velocity.multiply(dt));
+            
+            // Check collision with ships
+            for (const ship of this.ships) {
+                if (!ship.alive || ship.team === proj.team) continue;
+                
+                const dist = ship.position.subtract(proj.position).length();
+                if (dist < 30) {
+                    ship.takeDamage(proj.damage);
+                    
+                    // Create explosion particles
+                    for (let i = 0; i < 10; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 50 + Math.random() * 100;
+                        this.particles.push({
+                            position: proj.position,
+                            velocity: new Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed),
+                            life: 0.5,
+                            createdAt: currentTime,
+                            color: proj.type === 'laser' ? '#00ffff' : '#ff8800'
+                        });
+                    }
+                    
+                    return false;
+                }
             }
+            
+            // Remove old projectiles
+            return (currentTime - proj.createdAt) < proj.life;
         });
+        
+        // Update particles
+        this.particles = this.particles.filter(particle => {
+            particle.position = particle.position.add(particle.velocity.multiply(dt));
+            particle.velocity = particle.velocity.multiply(0.95);
+            return (currentTime - particle.createdAt) < particle.life;
+        });
+        
+        // Camera follows selected ships
+        if (this.selectedShips.length > 0) {
+            let avgX = 0, avgY = 0;
+            let count = 0;
+            this.selectedShips.forEach(ship => {
+                if (ship.alive) {
+                    avgX += ship.position.x;
+                    avgY += ship.position.y;
+                    count++;
+                }
+            });
+            if (count > 0) {
+                const targetCameraX = avgX / count - this.canvas.width / 2;
+                const targetCameraY = avgY / count - this.canvas.height / 2;
+                this.camera.x += (targetCameraX - this.camera.x) * 0.05;
+                this.camera.y += (targetCameraY - this.camera.y) * 0.05;
+            }
+        }
+        
+        // Clean up dead ships from selection
+        this.selectedShips = this.selectedShips.filter(s => s.alive);
     }
     
-    updateStats() {
-        const playerShipsRemaining = this.playerShips.filter(s => s.hits < this.ships[s.type].size).length;
-        const enemyShipsRemaining = this.enemyShips.filter(s => s.hits < this.ships[s.type].size).length;
+    draw() {
+        // Clear canvas with space background
+        this.ctx.fillStyle = '#000000';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        document.getElementById('player-ships').textContent = playerShipsRemaining;
-        document.getElementById('enemy-ships').textContent = enemyShipsRemaining;
-        document.getElementById('shots-fired').textContent = this.shotsFired;
+        // Draw stars
+        this.ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 100; i++) {
+            const x = (i * 123 + this.camera.x * 0.1) % this.canvas.width;
+            const y = (i * 456 + this.camera.y * 0.1) % this.canvas.height;
+            this.ctx.fillRect(x, y, 1, 1);
+        }
+        
+        // Draw projectiles
+        this.projectiles.forEach(proj => {
+            const screenPos = proj.position.subtract(this.camera);
+            
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.8;
+            
+            const gradient = this.ctx.createRadialGradient(
+                screenPos.x, screenPos.y, 0,
+                screenPos.x, screenPos.y, proj.type === 'missile' ? 8 : 5
+            );
+            
+            const color = proj.type === 'laser' ? '#00ffff' :
+                         proj.type === 'missile' ? '#ffff00' :
+                         proj.type === 'railgun' ? '#ff00ff' : '#ff8800';
+            
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, color + '00');
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(screenPos.x, screenPos.y, proj.type === 'missile' ? 8 : 5, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            this.ctx.restore();
+        });
+        
+        // Draw particles
+        const currentTime = performance.now() / 1000;
+        this.particles.forEach(particle => {
+            const screenPos = particle.position.subtract(this.camera);
+            const age = currentTime - particle.createdAt;
+            const alpha = 1 - (age / particle.life);
+            
+            this.ctx.save();
+            this.ctx.globalAlpha = alpha;
+            this.ctx.fillStyle = particle.color;
+            this.ctx.fillRect(screenPos.x - 1, screenPos.y - 1, 2, 2);
+            this.ctx.restore();
+        });
+        
+        // Draw ships
+        this.ships.forEach(ship => ship.draw(this.ctx, this.camera));
     }
     
-    updateStatusMessage(message) {
-        document.getElementById('game-message').textContent = message;
+    updateUI() {
+        document.getElementById('shipCount').textContent = 
+            `Ships: ${this.ships.filter(s => s.alive).length}`;
     }
     
-    updateShipList() {
-        // Initial ship list is already in HTML
-    }
-    
-    endGame(playerWon) {
-        this.gameStarted = false;
+    gameLoop() {
+        const currentTime = performance.now();
+        const dt = Math.min((currentTime - this.lastTime) / 1000, 0.1);
+        this.lastTime = currentTime;
         
-        document.getElementById('game-over-title').textContent = playerWon ? '🎉 Victory! 🎉' : '💀 Defeat 💀';
-        document.getElementById('game-over-message').textContent = playerWon 
-            ? 'Congratulations! You sank all enemy ships!' 
-            : 'All your ships have been sunk. Better luck next time!';
+        this.update(dt);
+        this.draw();
         
-        document.getElementById('final-shots').textContent = this.shotsFired;
-        const accuracy = this.shotsFired > 0 ? ((this.hits / this.shotsFired) * 100).toFixed(1) : 0;
-        document.getElementById('final-accuracy').textContent = accuracy + '%';
+        // Update FPS
+        this.frameCount++;
+        if (currentTime - this.lastFpsUpdate > 1000) {
+            this.fps = this.frameCount;
+            this.frameCount = 0;
+            this.lastFpsUpdate = currentTime;
+            document.getElementById('fps').textContent = `FPS: ${this.fps}`;
+        }
         
-        document.getElementById('game-screen').classList.remove('active');
-        document.getElementById('game-over-screen').classList.add('active');
+        requestAnimationFrame(() => this.gameLoop());
     }
 }
 
 // Initialize game when page loads
 let game;
 window.addEventListener('DOMContentLoaded', () => {
-    game = new BattleshipsGame();
+    game = new BattleshipsForeverGame();
 });
