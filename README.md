@@ -94,7 +94,7 @@ The HTML5 version is provided as-is for educational and entertainment purposes. 
 
 ## 🙏 Credits
 
-- Original Game: Sean "th15" Chan - [Wyrdysm.com](http://www.wyrdysm.com)
+- Original Game: Sean "th15" Chan - [Wyrdysm.com](https://www.wyrdysm.com)
 - HTML5 Adaptation: GitHub Community
 - Ship Emojis: Unicode Standard
 
