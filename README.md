@@ -72,7 +72,7 @@ This implementation uses:
 - **Core** - Central ship component (Large/Medium/Small)
 - **Cannon** - Rapid-fire projectile weapon
 - **Laser** - Fast, continuous beam weapon
-- **Missile** - Slow, high-damage homing weapon
+- **Missile** - Slow, high-damage weapon
 - **Railgun** - High-speed, penetrating weapon
 - **Engine** - Provides additional thrust
 - **Shield** - Adds shield protection

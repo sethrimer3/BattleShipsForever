@@ -293,9 +293,15 @@ class Ship {
                 section.localX, section.localY, 0,
                 section.localX, section.localY, section.radius
             );
-            gradient.addColorStop(0, section.color);
-            gradient.addColorStop(0.7, section.color + '88');
-            gradient.addColorStop(1, section.color + '00');
+            
+            // Ensure color has proper format for alpha channel
+            const baseColor = section.color;
+            const alphaColor1 = baseColor + (baseColor.length === 7 ? '88' : '');
+            const alphaColor2 = baseColor + (baseColor.length === 7 ? '00' : '');
+            
+            gradient.addColorStop(0, baseColor);
+            gradient.addColorStop(0.7, alphaColor1);
+            gradient.addColorStop(1, alphaColor2);
             
             ctx.fillStyle = gradient;
             ctx.beginPath();
@@ -622,11 +628,13 @@ class BattleshipsForeverGame {
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw stars
+        // Draw stars (parallax effect with pseudo-random distribution)
         this.ctx.fillStyle = '#ffffff';
+        const STAR_SEED_X = 123;
+        const STAR_SEED_Y = 456;
         for (let i = 0; i < 100; i++) {
-            const x = (i * 123 + this.camera.x * 0.1) % this.canvas.width;
-            const y = (i * 456 + this.camera.y * 0.1) % this.canvas.height;
+            const x = (i * STAR_SEED_X + this.camera.x * 0.1) % this.canvas.width;
+            const y = (i * STAR_SEED_Y + this.camera.y * 0.1) % this.canvas.height;
             this.ctx.fillRect(x, y, 1, 1);
         }
         
@@ -682,7 +690,8 @@ class BattleshipsForeverGame {
     
     gameLoop() {
         const currentTime = performance.now();
-        const dt = Math.min((currentTime - this.lastTime) / 1000, 0.1);
+        const MAX_DELTA_TIME = 0.1; // Cap at 100ms to prevent physics explosions when tab loses focus
+        const dt = Math.min((currentTime - this.lastTime) / 1000, MAX_DELTA_TIME);
         this.lastTime = currentTime;
         
         this.update(dt);
