@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleships Forever - HTML5 Edition</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚓ Battleships Forever ⚓</h1>
+            <p class="subtitle">HTML5 Edition - Play in your browser!</p>
+        </header>
+
+        <div id="game-screen" class="screen active">
+            <div class="game-info">
+                <div class="status-panel">
+                    <h2 id="game-status">Place Your Ships</h2>
+                    <p id="game-message">Click and drag to place ships on your grid</p>
+                    <button id="rotate-btn" class="btn">Rotate Ship (R)</button>
+                    <button id="random-btn" class="btn">Random Placement</button>
+                    <button id="start-btn" class="btn btn-primary" disabled>Start Battle!</button>
+                </div>
+                
+                <div class="stats-panel">
+                    <div class="stat">
+                        <span class="stat-label">Ships Remaining:</span>
+                        <span id="player-ships">5</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Enemy Ships:</span>
+                        <span id="enemy-ships">5</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Shots Fired:</span>
+                        <span id="shots-fired">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-boards">
+                <div class="board-container">
+                    <h3>Your Fleet</h3>
+                    <div id="player-board" class="board"></div>
+                </div>
+                
+                <div class="board-container">
+                    <h3>Enemy Waters</h3>
+                    <div id="enemy-board" class="board"></div>
+                </div>
+            </div>
+
+            <div class="ships-to-place">
+                <h3>Ships to Place:</h3>
+                <div id="ship-list">
+                    <div class="ship-item" data-ship="carrier">
+                        <span class="ship-icon">🚢</span>
+                        <span>Carrier (5)</span>
+                    </div>
+                    <div class="ship-item" data-ship="battleship">
+                        <span class="ship-icon">🚢</span>
+                        <span>Battleship (4)</span>
+                    </div>
+                    <div class="ship-item" data-ship="cruiser">
+                        <span class="ship-icon">🚤</span>
+                        <span>Cruiser (3)</span>
+                    </div>
+                    <div class="ship-item" data-ship="submarine">
+                        <span class="ship-icon">🛥️</span>
+                        <span>Submarine (3)</span>
+                    </div>
+                    <div class="ship-item" data-ship="destroyer">
+                        <span class="ship-icon">⛵</span>
+                        <span>Destroyer (2)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="screen">
+            <div class="game-over-content">
+                <h2 id="game-over-title">Game Over</h2>
+                <p id="game-over-message"></p>
+                <div class="final-stats">
+                    <p>Shots Fired: <span id="final-shots">0</span></p>
+                    <p>Accuracy: <span id="final-accuracy">0%</span></p>
+                </div>
+                <button id="play-again-btn" class="btn btn-primary">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Based on the original Battleships Forever by Sean "th15" Chan</p>
+        <p>HTML5 Edition - Open Source on GitHub</p>
+    </footer>
+
+    <script src="game.js"></script>
+</body>
+</html>
