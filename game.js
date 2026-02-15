@@ -701,9 +701,8 @@ class BattleshipsForeverGame {
                 if (proj.target && proj.target.alive) {
                     const toTarget = proj.target.position.subtract(proj.position);
                     const targetAngle = Math.atan2(toTarget.y, toTarget.x);
-                    let angleDiff = targetAngle - proj.angle;
-                    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-                    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                    // Efficient angle normalization
+                    let angleDiff = ((targetAngle - proj.angle + Math.PI) % (2 * Math.PI)) - Math.PI;
                     
                     proj.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), proj.turnRate);
                     
@@ -804,6 +803,7 @@ class BattleshipsForeverGame {
             
             ctx.save();
             ctx.globalAlpha = 0.8;
+            ctx.shadowBlur = 0; // Reset shadow blur at start
             
             if (proj.type === 'laser') {
                 // Laser beams - draw as a line from origin
@@ -861,24 +861,27 @@ class BattleshipsForeverGame {
                 ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Draw exhaust trail
-                const trailLength = 20;
-                const trailDir = proj.velocity.normalize().multiply(-1);
-                const trailEnd = screenPos.add(trailDir.multiply(trailLength));
-                
-                const trailGradient = ctx.createLinearGradient(
-                    screenPos.x, screenPos.y,
-                    trailEnd.x, trailEnd.y
-                );
-                trailGradient.addColorStop(0, '#ff8800aa');
-                trailGradient.addColorStop(1, '#ff880000');
-                
-                ctx.strokeStyle = trailGradient;
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.moveTo(screenPos.x, screenPos.y);
-                ctx.lineTo(trailEnd.x, trailEnd.y);
-                ctx.stroke();
+                // Draw exhaust trail (check velocity is non-zero)
+                const velocityLength = proj.velocity.length();
+                if (velocityLength > 0) {
+                    const trailLength = 20;
+                    const trailDir = proj.velocity.normalize().multiply(-1);
+                    const trailEnd = screenPos.add(trailDir.multiply(trailLength));
+                    
+                    const trailGradient = ctx.createLinearGradient(
+                        screenPos.x, screenPos.y,
+                        trailEnd.x, trailEnd.y
+                    );
+                    trailGradient.addColorStop(0, '#ff8800aa');
+                    trailGradient.addColorStop(1, '#ff880000');
+                    
+                    ctx.strokeStyle = trailGradient;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(screenPos.x, screenPos.y);
+                    ctx.lineTo(trailEnd.x, trailEnd.y);
+                    ctx.stroke();
+                }
             } else if (proj.type === 'railgun') {
                 // Railgun - bright piercing shot
                 ctx.shadowBlur = 20;
@@ -896,24 +899,27 @@ class BattleshipsForeverGame {
                 ctx.arc(screenPos.x, screenPos.y, 6, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Draw motion blur trail
-                const blurLength = 15;
-                const blurDir = proj.velocity.normalize().multiply(-1);
-                const blurEnd = screenPos.add(blurDir.multiply(blurLength));
-                
-                const blurGradient = ctx.createLinearGradient(
-                    screenPos.x, screenPos.y,
-                    blurEnd.x, blurEnd.y
-                );
-                blurGradient.addColorStop(0, '#ff00ff88');
-                blurGradient.addColorStop(1, '#ff00ff00');
-                
-                ctx.strokeStyle = blurGradient;
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(screenPos.x, screenPos.y);
-                ctx.lineTo(blurEnd.x, blurEnd.y);
-                ctx.stroke();
+                // Draw motion blur trail (check velocity is non-zero)
+                const velocityLength = proj.velocity.length();
+                if (velocityLength > 0) {
+                    const blurLength = 15;
+                    const blurDir = proj.velocity.normalize().multiply(-1);
+                    const blurEnd = screenPos.add(blurDir.multiply(blurLength));
+                    
+                    const blurGradient = ctx.createLinearGradient(
+                        screenPos.x, screenPos.y,
+                        blurEnd.x, blurEnd.y
+                    );
+                    blurGradient.addColorStop(0, '#ff00ff88');
+                    blurGradient.addColorStop(1, '#ff00ff00');
+                    
+                    ctx.strokeStyle = blurGradient;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(screenPos.x, screenPos.y);
+                    ctx.lineTo(blurEnd.x, blurEnd.y);
+                    ctx.stroke();
+                }
             } else {
                 // Cannon - standard projectile
                 ctx.shadowBlur = 10;
@@ -932,7 +938,6 @@ class BattleshipsForeverGame {
                 ctx.fill();
             }
             
-            ctx.shadowBlur = 0;
             ctx.restore();
         });
         
