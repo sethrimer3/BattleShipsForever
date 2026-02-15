@@ -15,13 +15,21 @@ The original game was a unique space combat game where you construct ships from 
 ### Features
 
 - 🚀 Real-time space combat with physics-based movement
-- 🔧 Modular ship construction system
-- ⚔️ Multiple weapon types (Cannons, Lasers, Missiles, Railguns)
+- 🔧 Modular ship construction system with sprite-based parts
+- ⚔️ **5 Weapon Types with Unique Behaviors**:
+  - **Cannons**: Standard rapid-fire projectiles
+  - **Lasers**: Fast continuous beams with visual effects
+  - **Missiles**: Homing projectiles that track targets
+  - **Railguns**: High-speed penetrating shots that pierce multiple enemies
 - 🎯 Direct ship control with WASD movement and rotation
-- 🤖 AI-controlled enemy ships
-- 💥 Dynamic combat with projectiles and explosions
-- 🎨 Glowing section graphics inspired by the original
+- 🤖 AI-controlled enemy ships with automatic targeting
+- 💥 Dynamic combat with enhanced visual effects:
+  - Muzzle flashes on weapon fire
+  - Weapon-specific projectile effects
+  - Explosion particles and impact effects
+- 🎨 Original BSF sprite graphics with glow effects
 - 📊 Real-time damage and destruction system
+- 💾 Import/Export ship designs as JSON files
 
 ## 🚀 How to Play
 
@@ -70,13 +78,18 @@ This implementation uses:
 ### Ship Section Types
 
 - **Core** - Central ship component (Large/Medium/Small)
-- **Cannon** - Rapid-fire projectile weapon
-- **Laser** - Fast, continuous beam weapon
-- **Missile** - Slow, high-damage weapon
-- **Railgun** - High-speed, penetrating weapon
-- **Engine** - Provides additional thrust
-- **Shield** - Adds shield protection
-- **Armor** - Increases damage resistance
+- **Weapons**:
+  - **Cannon** - Rapid-fire projectile weapon (500-800ms fire rate)
+  - **Laser** - Fast beam weapon with continuous fire (200ms fire rate)
+  - **Missile** - Homing projectiles that track enemies (2000ms fire rate, high damage)
+  - **Railgun** - High-speed penetrating weapon (1500ms fire rate, pierces targets)
+- **Utility**:
+  - **Engine** - Provides additional thrust
+  - **Shield** - Adds shield protection
+  - **Armor** - Increases damage resistance
+- **Structural** - Connectors and hull sections
+
+See [WEAPONS.md](WEAPONS.md) for detailed weapon specifications and visual effects.
 
 ## 🌐 GitHub Pages Deployment
 

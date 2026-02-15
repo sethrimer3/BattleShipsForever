@@ -246,6 +246,12 @@ class Ship {
                     const rotated = new Vector2(section.localX, section.localY).rotate(this.angle);
                     const worldPos = this.position.add(rotated);
                     
+                    // Store muzzle flash for visual effect
+                    section.muzzleFlash = {
+                        time: currentTime,
+                        duration: 100 // ms
+                    };
+                    
                     // Create projectile
                     const projectile = {
                         position: worldPos,
@@ -255,8 +261,23 @@ class Ship {
                         type: section.type,
                         team: this.team,
                         life: section.type === 'laser' ? 0.5 : 2,
-                        createdAt: currentTime / 1000
+                        createdAt: currentTime / 1000,
+                        angle: this.angle,
+                        owner: this
                     };
+                    
+                    // Special handling for missiles - add homing capability
+                    if (section.type === 'missile') {
+                        projectile.homing = true;
+                        projectile.target = null;
+                        projectile.turnRate = 0.05; // radians per frame
+                    }
+                    
+                    // Railgun can penetrate
+                    if (section.type === 'railgun') {
+                        projectile.penetration = true;
+                        projectile.hitTargets = [];
+                    }
                     
                     projectiles.push(projectile);
                 }
@@ -341,6 +362,38 @@ class Ship {
                 ctx.beginPath();
                 ctx.arc(section.localX, section.localY, section.radius * 0.7, 0, Math.PI * 2);
                 ctx.stroke();
+            }
+            
+            // Draw muzzle flash for weapons that just fired
+            if (section.muzzleFlash && ['cannon', 'laser', 'missile', 'railgun'].includes(section.type)) {
+                const elapsed = Date.now() - section.muzzleFlash.time;
+                if (elapsed < section.muzzleFlash.duration) {
+                    const alpha = 1 - (elapsed / section.muzzleFlash.duration);
+                    const flashSize = section.radius * 1.5;
+                    
+                    ctx.save();
+                    ctx.globalAlpha = alpha * 0.8;
+                    
+                    const flashGradient = ctx.createRadialGradient(
+                        section.localX, section.localY, 0,
+                        section.localX, section.localY, flashSize
+                    );
+                    
+                    const flashColor = section.type === 'laser' ? '#00ffff' :
+                                      section.type === 'missile' ? '#ffff00' :
+                                      section.type === 'railgun' ? '#ff00ff' : '#ff8800';
+                    
+                    flashGradient.addColorStop(0, flashColor);
+                    flashGradient.addColorStop(0.5, flashColor + '88');
+                    flashGradient.addColorStop(1, flashColor + '00');
+                    
+                    ctx.fillStyle = flashGradient;
+                    ctx.beginPath();
+                    ctx.arc(section.localX, section.localY, flashSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.restore();
+                }
             }
             
             // Health bar for damaged sections
@@ -624,11 +677,49 @@ class BattleshipsForeverGame {
         // Update projectiles
         const currentTime = performance.now() / 1000;
         this.projectiles = this.projectiles.filter(proj => {
+            // Homing missile logic
+            if (proj.homing && proj.type === 'missile') {
+                // Find a target if we don't have one
+                if (!proj.target || !proj.target.alive) {
+                    const enemyShips = this.ships.filter(s => s.alive && s.team !== proj.team);
+                    if (enemyShips.length > 0) {
+                        // Find nearest enemy
+                        let nearest = null;
+                        let minDist = Infinity;
+                        for (const ship of enemyShips) {
+                            const dist = proj.position.subtract(ship.position).length();
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearest = ship;
+                            }
+                        }
+                        proj.target = nearest;
+                    }
+                }
+                
+                // Turn towards target
+                if (proj.target && proj.target.alive) {
+                    const toTarget = proj.target.position.subtract(proj.position);
+                    const targetAngle = Math.atan2(toTarget.y, toTarget.x);
+                    // Efficient angle normalization
+                    let angleDiff = ((targetAngle - proj.angle + Math.PI) % (2 * Math.PI)) - Math.PI;
+                    
+                    proj.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), proj.turnRate);
+                    
+                    // Update velocity based on new angle
+                    const speed = proj.velocity.length();
+                    proj.velocity = new Vector2(Math.cos(proj.angle), Math.sin(proj.angle)).multiply(speed);
+                }
+            }
+            
             proj.position = proj.position.add(proj.velocity.multiply(dt));
             
             // Check collision with ships
             for (const ship of this.ships) {
                 if (!ship.alive || ship.team === proj.team) continue;
+                
+                // Skip if railgun already hit this target
+                if (proj.penetration && proj.hitTargets.includes(ship)) continue;
                 
                 const dist = ship.position.subtract(proj.position).length();
                 if (dist < 30) {
@@ -647,7 +738,13 @@ class BattleshipsForeverGame {
                         });
                     }
                     
-                    return false;
+                    // Railgun penetrates, others are destroyed on hit
+                    if (proj.penetration) {
+                        proj.hitTargets.push(ship);
+                        continue; // Don't remove projectile
+                    } else {
+                        return false;
+                    }
                 }
             }
             
@@ -704,27 +801,144 @@ class BattleshipsForeverGame {
         this.projectiles.forEach(proj => {
             const screenPos = proj.position.subtract(this.camera);
             
-            this.ctx.save();
-            this.ctx.globalAlpha = 0.8;
+            ctx.save();
+            ctx.globalAlpha = 0.8;
+            ctx.shadowBlur = 0; // Reset shadow blur at start
             
-            const gradient = this.ctx.createRadialGradient(
-                screenPos.x, screenPos.y, 0,
-                screenPos.x, screenPos.y, proj.type === 'missile' ? 8 : 5
-            );
+            if (proj.type === 'laser') {
+                // Laser beams - draw as a line from origin
+                if (proj.owner && proj.owner.alive) {
+                    const ownerPos = proj.owner.position.subtract(this.camera);
+                    ctx.strokeStyle = '#00ffff';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#00ffff';
+                    ctx.beginPath();
+                    ctx.moveTo(ownerPos.x, ownerPos.y);
+                    ctx.lineTo(screenPos.x, screenPos.y);
+                    ctx.stroke();
+                    
+                    // Add glow at projectile position
+                    const gradient = this.ctx.createRadialGradient(
+                        screenPos.x, screenPos.y, 0,
+                        screenPos.x, screenPos.y, 8
+                    );
+                    gradient.addColorStop(0, '#ffffff');
+                    gradient.addColorStop(0.5, '#00ffff');
+                    gradient.addColorStop(1, '#00ffff00');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Fallback if owner is destroyed
+                    const gradient = this.ctx.createRadialGradient(
+                        screenPos.x, screenPos.y, 0,
+                        screenPos.x, screenPos.y, 5
+                    );
+                    gradient.addColorStop(0, '#00ffff');
+                    gradient.addColorStop(1, '#00ffff00');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(screenPos.x, screenPos.y, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else if (proj.type === 'missile') {
+                // Missiles with trail
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#ffff00';
+                
+                // Draw missile body
+                const gradient = this.ctx.createRadialGradient(
+                    screenPos.x, screenPos.y, 0,
+                    screenPos.x, screenPos.y, 8
+                );
+                gradient.addColorStop(0, '#ffffff');
+                gradient.addColorStop(0.3, '#ffff00');
+                gradient.addColorStop(1, '#ffff0000');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw exhaust trail (check velocity is non-zero)
+                const velocityLength = proj.velocity.length();
+                if (velocityLength > 0) {
+                    const trailLength = 20;
+                    const trailDir = proj.velocity.normalize().multiply(-1);
+                    const trailEnd = screenPos.add(trailDir.multiply(trailLength));
+                    
+                    const trailGradient = ctx.createLinearGradient(
+                        screenPos.x, screenPos.y,
+                        trailEnd.x, trailEnd.y
+                    );
+                    trailGradient.addColorStop(0, '#ff8800aa');
+                    trailGradient.addColorStop(1, '#ff880000');
+                    
+                    ctx.strokeStyle = trailGradient;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(screenPos.x, screenPos.y);
+                    ctx.lineTo(trailEnd.x, trailEnd.y);
+                    ctx.stroke();
+                }
+            } else if (proj.type === 'railgun') {
+                // Railgun - bright piercing shot
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#ff00ff';
+                
+                const gradient = this.ctx.createRadialGradient(
+                    screenPos.x, screenPos.y, 0,
+                    screenPos.x, screenPos.y, 6
+                );
+                gradient.addColorStop(0, '#ffffff');
+                gradient.addColorStop(0.3, '#ff00ff');
+                gradient.addColorStop(1, '#ff00ff00');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw motion blur trail (check velocity is non-zero)
+                const velocityLength = proj.velocity.length();
+                if (velocityLength > 0) {
+                    const blurLength = 15;
+                    const blurDir = proj.velocity.normalize().multiply(-1);
+                    const blurEnd = screenPos.add(blurDir.multiply(blurLength));
+                    
+                    const blurGradient = ctx.createLinearGradient(
+                        screenPos.x, screenPos.y,
+                        blurEnd.x, blurEnd.y
+                    );
+                    blurGradient.addColorStop(0, '#ff00ff88');
+                    blurGradient.addColorStop(1, '#ff00ff00');
+                    
+                    ctx.strokeStyle = blurGradient;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(screenPos.x, screenPos.y);
+                    ctx.lineTo(blurEnd.x, blurEnd.y);
+                    ctx.stroke();
+                }
+            } else {
+                // Cannon - standard projectile
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#ff8800';
+                
+                const gradient = this.ctx.createRadialGradient(
+                    screenPos.x, screenPos.y, 0,
+                    screenPos.x, screenPos.y, 5
+                );
+                gradient.addColorStop(0, '#ffaa00');
+                gradient.addColorStop(0.5, '#ff8800');
+                gradient.addColorStop(1, '#ff880000');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
             
-            const color = proj.type === 'laser' ? '#00ffff' :
-                         proj.type === 'missile' ? '#ffff00' :
-                         proj.type === 'railgun' ? '#ff00ff' : '#ff8800';
-            
-            gradient.addColorStop(0, color);
-            gradient.addColorStop(1, color + '00');
-            
-            this.ctx.fillStyle = gradient;
-            this.ctx.beginPath();
-            this.ctx.arc(screenPos.x, screenPos.y, proj.type === 'missile' ? 8 : 5, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            this.ctx.restore();
+            ctx.restore();
         });
         
         // Draw particles
