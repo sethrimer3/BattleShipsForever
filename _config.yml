@@ -1,0 +1,8 @@
+# GitHub Pages Configuration
+
+# Enable GitHub Pages
+theme: jekyll-theme-minimal
+
+# Exclude original game files from being processed
+exclude:
+  - ORIGINAL/

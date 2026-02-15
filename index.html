@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleships Forever - HTML5 Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #000;
+            cursor: crosshair;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 2px solid #00ff00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        #controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            background: #004400;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #006600;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        .btn:active {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        #info {
+            font-family: monospace;
+            font-size: 14px;
+            color: #00ff00;
+        }
+        
+        #shipBuilder {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            display: none;
+            z-index: 20;
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+        
+        #shipBuilder.active {
+            display: block;
+        }
+        
+        #shipBuilder h3 {
+            color: #00ff00;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 5px;
+        }
+        
+        .section-category {
+            margin: 10px 0;
+        }
+        
+        .section-category h4 {
+            color: #00cc00;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .section-btn {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 2px;
+            background: #003300;
+            border: 1px solid #006600;
+            color: #00ff00;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .section-btn:hover {
+            background: #004400;
+            border-color: #00ff00;
+        }
+        
+        .section-btn.selected {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #00cc00;
+            max-width: 400px;
+        }
+        
+        #instructions h4 {
+            color: #00ff00;
+            margin-bottom: 5px;
+        }
+        
+        #instructions ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        #instructions li {
+            padding: 2px 0;
+        }
+        
+        .key {
+            color: #00ff00;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="controls">
+            <button class="btn" onclick="game.toggleShipBuilder()">Ship Builder</button>
+            <button class="btn" onclick="game.spawnPlayerShip()">Deploy Ship</button>
+            <button class="btn" onclick="game.spawnEnemyShip()">Spawn Enemy</button>
+            <button class="btn" onclick="game.reset()">Reset</button>
+        </div>
+        <div id="info">
+            <span id="fps">FPS: 0</span> | 
+            <span id="shipCount">Ships: 0</span> |
+            <span id="mode">Mode: Sandbox</span>
+        </div>
+    </div>
+    
+    <div id="shipBuilder">
+        <h3>Ship Builder</h3>
+        <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
+            Select sections to build your ship. Click on canvas to place.
+        </p>
+        
+        <div class="section-category">
+            <h4>CORE SECTIONS</h4>
+            <button class="section-btn" data-type="core" data-size="large">Large Core</button>
+            <button class="section-btn" data-type="core" data-size="medium">Medium Core</button>
+            <button class="section-btn" data-type="core" data-size="small">Small Core</button>
+        </div>
+        
+        <div class="section-category">
+            <h4>WEAPON SECTIONS</h4>
+            <button class="section-btn" data-type="cannon">Cannon</button>
+            <button class="section-btn" data-type="laser">Laser</button>
+            <button class="section-btn" data-type="missile">Missile</button>
+            <button class="section-btn" data-type="railgun">Railgun</button>
+        </div>
+        
+        <div class="section-category">
+            <h4>UTILITY SECTIONS</h4>
+            <button class="section-btn" data-type="engine">Engine</button>
+            <button class="section-btn" data-type="shield">Shield</button>
+            <button class="section-btn" data-type="armor">Armor</button>
+        </div>
+        
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #004400;">
+            <button class="btn" style="width: 100%;" onclick="game.saveCurrentShip()">Save Ship Design</button>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        <h4>CONTROLS</h4>
+        <ul>
+            <li><span class="key">WASD</span> - Move selected ship</li>
+            <li><span class="key">Q/E</span> - Rotate ship</li>
+            <li><span class="key">SPACE</span> - Fire weapons</li>
+            <li><span class="key">Click</span> - Select ship</li>
+            <li><span class="key">Right Click</span> - Move order</li>
+            <li><span class="key">Shift+Click</span> - Add to selection</li>
+        </ul>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+    
+    <script src="game.js"></script>
+</body>
+</html>
