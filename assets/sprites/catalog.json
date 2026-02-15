@@ -1,0 +1,241 @@
+{
+  "version": "1.0",
+  "description": "Ship piece sprite catalog for Battleships Forever",
+  "sprites": {
+    "cores": [
+      {
+        "id": "core_large_01",
+        "name": "Large Core",
+        "file": "BSF_Stock01.png",
+        "type": "core",
+        "size": "large",
+        "health": 200,
+        "mass": 30
+      },
+      {
+        "id": "core_medium_01",
+        "name": "Medium Core",
+        "file": "BSF_Stock02.png",
+        "type": "core",
+        "size": "medium",
+        "health": 150,
+        "mass": 20
+      },
+      {
+        "id": "core_small_01",
+        "name": "Small Core",
+        "file": "BSF_Stock03.png",
+        "type": "core",
+        "size": "small",
+        "health": 100,
+        "mass": 10
+      }
+    ],
+    "weapons": [
+      {
+        "id": "cannon_01",
+        "name": "Light Cannon",
+        "file": "BSF_Stock04.png",
+        "type": "cannon",
+        "health": 80,
+        "mass": 8,
+        "fireRate": 500,
+        "damage": 20
+      },
+      {
+        "id": "cannon_02",
+        "name": "Heavy Cannon",
+        "file": "BSF_Stock05.png",
+        "type": "cannon",
+        "health": 100,
+        "mass": 12,
+        "fireRate": 800,
+        "damage": 35
+      },
+      {
+        "id": "laser_01",
+        "name": "Laser Turret",
+        "file": "BSF_Stock06.png",
+        "type": "laser",
+        "health": 70,
+        "mass": 6,
+        "fireRate": 200,
+        "damage": 10
+      },
+      {
+        "id": "missile_01",
+        "name": "Missile Launcher",
+        "file": "BSF_Stock07.png",
+        "type": "missile",
+        "health": 90,
+        "mass": 10,
+        "fireRate": 2000,
+        "damage": 50
+      },
+      {
+        "id": "railgun_01",
+        "name": "Railgun",
+        "file": "BSF_Stock08.png",
+        "type": "railgun",
+        "health": 85,
+        "mass": 9,
+        "fireRate": 1500,
+        "damage": 40
+      }
+    ],
+    "utility": [
+      {
+        "id": "engine_01",
+        "name": "Basic Engine",
+        "file": "BSF_Stock09.png",
+        "type": "engine",
+        "health": 80,
+        "mass": 7,
+        "thrust": 50
+      },
+      {
+        "id": "engine_02",
+        "name": "Heavy Engine",
+        "file": "BSF_Stock10.png",
+        "type": "engine",
+        "health": 100,
+        "mass": 10,
+        "thrust": 80
+      },
+      {
+        "id": "shield_01",
+        "name": "Shield Generator",
+        "file": "BSF_Stock11.png",
+        "type": "shield",
+        "health": 90,
+        "mass": 8,
+        "shieldStrength": 50
+      },
+      {
+        "id": "armor_01",
+        "name": "Armor Plate",
+        "file": "BSF_Stock12.png",
+        "type": "armor",
+        "health": 120,
+        "mass": 12,
+        "armorValue": 30
+      }
+    ],
+    "structural": [
+      {
+        "id": "struct_01",
+        "name": "Structural Beam",
+        "file": "BSF_Stock13.png",
+        "type": "structure",
+        "health": 60,
+        "mass": 5
+      },
+      {
+        "id": "struct_02",
+        "name": "Hull Plate",
+        "file": "BSF_Stock14.png",
+        "type": "structure",
+        "health": 80,
+        "mass": 6
+      },
+      {
+        "id": "struct_03",
+        "name": "Frame Section",
+        "file": "BSF_Stock15.png",
+        "type": "structure",
+        "health": 70,
+        "mass": 5
+      },
+      {
+        "id": "struct_04",
+        "name": "Wing Section",
+        "file": "BSF_Stock16.png",
+        "type": "structure",
+        "health": 65,
+        "mass": 4
+      }
+    ],
+    "special": [
+      {
+        "id": "special_01",
+        "name": "Command Bridge",
+        "file": "BSF_Stock17.png",
+        "type": "special",
+        "health": 100,
+        "mass": 8
+      },
+      {
+        "id": "special_02",
+        "name": "Sensor Array",
+        "file": "BSF_Stock18.png",
+        "type": "special",
+        "health": 60,
+        "mass": 5
+      },
+      {
+        "id": "special_03",
+        "name": "Power Core",
+        "file": "BSF_Stock19.png",
+        "type": "special",
+        "health": 110,
+        "mass": 12
+      },
+      {
+        "id": "variant_01",
+        "name": "Hull Variant A",
+        "file": "BSF_Stock20.png",
+        "type": "structure",
+        "health": 75,
+        "mass": 6
+      },
+      {
+        "id": "variant_02",
+        "name": "Hull Variant B",
+        "file": "BSF_Stock21.png",
+        "type": "structure",
+        "health": 70,
+        "mass": 5
+      },
+      {
+        "id": "variant_03",
+        "name": "Weapon Mount",
+        "file": "BSF_Stock22.png",
+        "type": "structure",
+        "health": 65,
+        "mass": 4
+      },
+      {
+        "id": "variant_04",
+        "name": "Engine Mount",
+        "file": "BSF_Stock23.png",
+        "type": "structure",
+        "health": 70,
+        "mass": 5
+      },
+      {
+        "id": "variant_05",
+        "name": "Connector A",
+        "file": "BSF_Stock24.png",
+        "type": "structure",
+        "health": 55,
+        "mass": 3
+      },
+      {
+        "id": "variant_06",
+        "name": "Connector B",
+        "file": "BSF_Stock25.png",
+        "type": "structure",
+        "health": 55,
+        "mass": 3
+      },
+      {
+        "id": "variant_07",
+        "name": "Detail Section",
+        "file": "BSF_Stock26.png",
+        "type": "structure",
+        "health": 50,
+        "mass": 2
+      }
+    ]
+  }
+}
