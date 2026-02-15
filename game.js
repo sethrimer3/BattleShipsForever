@@ -47,6 +47,10 @@ class ShipSection {
         this.localY = y;
         this.health = 100;
         this.maxHealth = 100;
+        this.sprite = null;
+        this.spriteFile = null;
+        this.partId = null;
+        this.mass = 10;
         
         // Different properties based on type
         switch(type) {
@@ -97,6 +101,14 @@ class ShipSection {
                 this.color = '#888888';
                 this.radius = 12;
                 this.armorValue = 30;
+                break;
+            case 'structure':
+                this.color = '#666666';
+                this.radius = 10;
+                break;
+            case 'special':
+                this.color = '#ffaa00';
+                this.radius = 12;
                 break;
             default:
                 this.color = '#666666';
@@ -288,32 +300,48 @@ class Ship {
         
         // Draw sections
         for (const section of this.sections) {
-            // Section glow
-            const gradient = ctx.createRadialGradient(
-                section.localX, section.localY, 0,
-                section.localX, section.localY, section.radius
-            );
-            
-            // Ensure color has proper format for alpha channel
-            const baseColor = section.color;
-            const alphaColor1 = baseColor + (baseColor.length === 7 ? '88' : '');
-            const alphaColor2 = baseColor + (baseColor.length === 7 ? '00' : '');
-            
-            gradient.addColorStop(0, baseColor);
-            gradient.addColorStop(0.7, alphaColor1);
-            gradient.addColorStop(1, alphaColor2);
-            
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(section.localX, section.localY, section.radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Section outline
-            ctx.strokeStyle = section.color;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(section.localX, section.localY, section.radius * 0.7, 0, Math.PI * 2);
-            ctx.stroke();
+            // Draw sprite if available
+            if (section.sprite && section.sprite.complete) {
+                ctx.save();
+                ctx.translate(section.localX, section.localY);
+                const scale = (section.radius * 2) / Math.max(section.sprite.width, section.sprite.height);
+                ctx.drawImage(
+                    section.sprite,
+                    -section.sprite.width * scale / 2,
+                    -section.sprite.height * scale / 2,
+                    section.sprite.width * scale,
+                    section.sprite.height * scale
+                );
+                ctx.restore();
+            } else {
+                // Fallback to circle rendering
+                // Section glow
+                const gradient = ctx.createRadialGradient(
+                    section.localX, section.localY, 0,
+                    section.localX, section.localY, section.radius
+                );
+                
+                // Ensure color has proper format for alpha channel
+                const baseColor = section.color;
+                const alphaColor1 = baseColor + (baseColor.length === 7 ? '88' : '');
+                const alphaColor2 = baseColor + (baseColor.length === 7 ? '00' : '');
+                
+                gradient.addColorStop(0, baseColor);
+                gradient.addColorStop(0.7, alphaColor1);
+                gradient.addColorStop(1, alphaColor2);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(section.localX, section.localY, section.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Section outline
+                ctx.strokeStyle = section.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(section.localX, section.localY, section.radius * 0.7, 0, Math.PI * 2);
+                ctx.stroke();
+            }
             
             // Health bar for damaged sections
             if (section.health < section.maxHealth) {
@@ -366,6 +394,7 @@ class BattleshipsForeverGame {
         this.shipBuilderActive = false;
         this.selectedSection = null;
         this.currentShipDesign = [];
+        this.shipEditor = null;
         
         this.keys = {};
         this.mouse = new Vector2(0, 0);
@@ -376,8 +405,14 @@ class BattleshipsForeverGame {
         this.lastFpsUpdate = performance.now();
         
         this.setupEventListeners();
+        this.initializeShipEditor();
         this.setupShipBuilder();
         this.gameLoop();
+    }
+    
+    async initializeShipEditor() {
+        this.shipEditor = new ShipEditor(this);
+        await this.shipEditor.initialize();
     }
     
     resizeCanvas() {
@@ -410,6 +445,18 @@ class BattleshipsForeverGame {
         });
         
         this.canvas.addEventListener('click', (e) => {
+            // If in ship builder mode and a part is selected, place it
+            if (this.shipBuilderActive && this.shipEditor && this.shipEditor.selectedPart) {
+                const canvasPos = new Vector2(e.clientX, e.clientY);
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                const localX = canvasPos.x - centerX;
+                const localY = canvasPos.y - centerY;
+                
+                this.shipEditor.addPartToShip(this.shipEditor.selectedPart, localX, localY);
+                return;
+            }
+            
             const worldPos = new Vector2(
                 e.clientX + this.camera.x,
                 e.clientY + this.camera.y
@@ -476,17 +523,28 @@ class BattleshipsForeverGame {
     }
     
     spawnPlayerShip() {
-        const ship = new Ship(
-            this.canvas.width / 2 + this.camera.x,
-            this.canvas.height / 2 + this.camera.y,
-            'player'
-        );
+        let ship;
         
-        // Add some default weapons and systems
-        ship.addSection(new ShipSection('cannon', 'medium', 30, 0));
-        ship.addSection(new ShipSection('cannon', 'medium', -30, 0));
-        ship.addSection(new ShipSection('engine', 'medium', 0, 30));
-        ship.addSection(new ShipSection('shield', 'medium', 0, -30));
+        // Check if ship editor has a design
+        if (this.shipEditor && this.shipEditor.currentShip.sections.length > 0) {
+            ship = this.shipEditor.createShipFromDesign(
+                this.canvas.width / 2 + this.camera.x,
+                this.canvas.height / 2 + this.camera.y,
+                'player'
+            );
+        } else {
+            ship = new Ship(
+                this.canvas.width / 2 + this.camera.x,
+                this.canvas.height / 2 + this.camera.y,
+                'player'
+            );
+            
+            // Add some default weapons and systems
+            ship.addSection(new ShipSection('cannon', 'medium', 30, 0));
+            ship.addSection(new ShipSection('cannon', 'medium', -30, 0));
+            ship.addSection(new ShipSection('engine', 'medium', 0, 30));
+            ship.addSection(new ShipSection('shield', 'medium', 0, -30));
+        }
         
         this.ships.push(ship);
         this.updateUI();
@@ -522,7 +580,11 @@ class BattleshipsForeverGame {
     }
     
     saveCurrentShip() {
-        alert('Ship design saved! (Feature in development)');
+        if (this.shipEditor) {
+            this.shipEditor.exportShipDesign();
+        } else {
+            alert('Ship editor is loading...');
+        }
     }
     
     update(dt) {
@@ -681,6 +743,98 @@ class BattleshipsForeverGame {
         
         // Draw ships
         this.ships.forEach(ship => ship.draw(this.ctx, this.camera));
+        
+        // Draw ship builder preview
+        if (this.shipBuilderActive && this.shipEditor) {
+            this.drawShipBuilderPreview();
+        }
+    }
+    
+    drawShipBuilderPreview() {
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        
+        this.ctx.save();
+        this.ctx.translate(centerX, centerY);
+        
+        // Draw grid
+        this.ctx.strokeStyle = '#003300';
+        this.ctx.lineWidth = 1;
+        const gridSize = 32;
+        const gridCount = 20;
+        for (let i = -gridCount; i <= gridCount; i++) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(i * gridSize, -gridCount * gridSize);
+            this.ctx.lineTo(i * gridSize, gridCount * gridSize);
+            this.ctx.stroke();
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(-gridCount * gridSize, i * gridSize);
+            this.ctx.lineTo(gridCount * gridSize, i * gridSize);
+            this.ctx.stroke();
+        }
+        
+        // Draw center crosshair
+        this.ctx.strokeStyle = '#00ff00';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-20, 0);
+        this.ctx.lineTo(20, 0);
+        this.ctx.stroke();
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -20);
+        this.ctx.lineTo(0, 20);
+        this.ctx.stroke();
+        
+        // Draw current ship design
+        for (const section of this.shipEditor.currentShip.sections) {
+            const part = section.partData;
+            if (part && this.shipEditor.spriteLoader.getSprite(part.file)) {
+                const sprite = this.shipEditor.spriteLoader.getSprite(part.file);
+                if (sprite && sprite.complete) {
+                    const scale = 0.5; // Scale down sprites for editor
+                    this.ctx.drawImage(
+                        sprite,
+                        section.localX - sprite.width * scale / 2,
+                        section.localY - sprite.height * scale / 2,
+                        sprite.width * scale,
+                        sprite.height * scale
+                    );
+                    
+                    // Draw outline
+                    this.ctx.strokeStyle = '#00ff00';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(
+                        section.localX - sprite.width * scale / 2,
+                        section.localY - sprite.height * scale / 2,
+                        sprite.width * scale,
+                        sprite.height * scale
+                    );
+                }
+            }
+        }
+        
+        // Draw hover preview if part is selected
+        if (this.shipEditor.selectedPart) {
+            const sprite = this.shipEditor.spriteLoader.getSprite(this.shipEditor.selectedPart.file);
+            if (sprite && sprite.complete) {
+                const mouseX = this.mouse.x - centerX;
+                const mouseY = this.mouse.y - centerY;
+                const scale = 0.5;
+                
+                this.ctx.globalAlpha = 0.5;
+                this.ctx.drawImage(
+                    sprite,
+                    mouseX - sprite.width * scale / 2,
+                    mouseY - sprite.height * scale / 2,
+                    sprite.width * scale,
+                    sprite.height * scale
+                );
+                this.ctx.globalAlpha = 1.0;
+            }
+        }
+        
+        this.ctx.restore();
     }
     
     updateUI() {
