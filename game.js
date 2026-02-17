@@ -559,6 +559,11 @@ class BattleshipsForeverGame {
         this.frameCount = 0;
         this.lastFpsUpdate = performance.now();
         
+        // Game state
+        this.paused = false;
+        this.inGame = false;
+        this.difficulty = 'normal';
+        
         // Initialize audio manager
         this.audio = new AudioManager();
         this.loadAudio();
@@ -566,7 +571,74 @@ class BattleshipsForeverGame {
         this.setupEventListeners();
         this.initializeShipEditor();
         this.setupShipBuilder();
+        
+        // Show main menu initially
+        this.showMainMenu();
+        
         this.gameLoop();
+    }
+    
+    showMainMenu() {
+        this.inGame = false;
+        this.paused = false;
+        document.getElementById('mainMenu').classList.remove('hidden');
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('instructions').style.display = 'none';
+        this.audio.playMusic('Thememusic.ogg');
+    }
+    
+    startGame() {
+        this.audio.playSound('buttonClick');
+        this.inGame = true;
+        this.paused = false;
+        document.getElementById('mainMenu').classList.add('hidden');
+        document.getElementById('ui').style.display = 'flex';
+        document.getElementById('instructions').style.display = 'block';
+        this.audio.playMusic('Combatmusic.ogg');
+    }
+    
+    showOptions() {
+        this.audio.playSound('buttonClick');
+        document.getElementById('optionsMenu').classList.add('active');
+    }
+    
+    closeOptions() {
+        this.audio.playSound('buttonClick');
+        document.getElementById('optionsMenu').classList.remove('active');
+    }
+    
+    pauseGame() {
+        if (!this.inGame) return;
+        this.paused = true;
+        document.getElementById('pauseMenu').classList.add('active');
+    }
+    
+    resumeGame() {
+        this.audio.playSound('buttonClick');
+        this.paused = false;
+        document.getElementById('pauseMenu').classList.remove('active');
+    }
+    
+    returnToMainMenu() {
+        this.audio.playSound('buttonClick');
+        document.getElementById('pauseMenu').classList.remove('active');
+        this.reset();
+        this.showMainMenu();
+    }
+    
+    setSFXVolume(value) {
+        this.audio.setSoundVolume(value / 100);
+        document.getElementById('sfxValue').textContent = value + '%';
+    }
+    
+    setMusicVolume(value) {
+        this.audio.setMusicVolume(value / 100);
+        document.getElementById('musicValue').textContent = value + '%';
+    }
+    
+    setDifficulty(diff) {
+        this.difficulty = diff;
+        this.audio.playSound('buttonClick');
     }
     
     loadAudio() {
@@ -597,6 +669,18 @@ class BattleshipsForeverGame {
     setupEventListeners() {
         window.addEventListener('keydown', (e) => {
             this.keys[e.key.toLowerCase()] = true;
+            
+            // Escape key to pause/unpause
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (this.inGame) {
+                    if (this.paused) {
+                        this.resumeGame();
+                    } else {
+                        this.pauseGame();
+                    }
+                }
+            }
             
             if (e.key === ' ') {
                 e.preventDefault();
@@ -651,6 +735,7 @@ class BattleshipsForeverGame {
                     ship.selected = !ship.selected;
                     if (ship.selected && !this.selectedShips.includes(ship)) {
                         this.selectedShips.push(ship);
+                        this.audio.playSound('selectShip');
                     } else {
                         const index = this.selectedShips.indexOf(ship);
                         if (index > -1) this.selectedShips.splice(index, 1);
@@ -691,6 +776,7 @@ class BattleshipsForeverGame {
     }
     
     toggleShipBuilder() {
+        this.audio.playSound('buttonClick');
         const builder = document.getElementById('shipBuilder');
         builder.classList.toggle('active');
         this.shipBuilderActive = builder.classList.contains('active');
@@ -749,6 +835,7 @@ class BattleshipsForeverGame {
     }
     
     reset() {
+        this.audio.playSound('buttonClick');
         this.ships = [];
         this.projectiles = [];
         this.particles = [];
@@ -766,6 +853,9 @@ class BattleshipsForeverGame {
     }
     
     update(dt) {
+        // Don't update game logic if paused
+        if (this.paused) return;
+        
         // Handle keyboard controls for selected ships
         if (this.selectedShips.length > 0) {
             let movement = new Vector2(0, 0);
