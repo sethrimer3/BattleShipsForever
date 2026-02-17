@@ -268,6 +268,14 @@ class ShipEditor {
             }))
         };
         
+        // Save to localStorage first
+        if (this.game && this.game.persistence) {
+            const shipId = this.game.persistence.saveShipDesign(exportData);
+            if (shipId) {
+                alert(`Ship "${shipName}" saved to library!\n\nClick OK to also download as JSON file.`);
+            }
+        }
+        
         // Create download
         const jsonStr = JSON.stringify(exportData, null, 2);
         const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -279,8 +287,74 @@ class ShipEditor {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+    
+    saveToLibrary() {
+        if (!this.game || !this.game.persistence) {
+            alert('Persistence system not available');
+            return;
+        }
         
-        alert(`Ship "${shipName}" exported successfully!`);
+        const shipName = prompt('Enter ship name:', this.currentShip.name || 'Custom Ship');
+        if (!shipName) return;
+        
+        const shipDescription = prompt('Enter ship description (optional):', this.currentShip.description || '');
+        
+        const exportData = {
+            version: "1.0",
+            name: shipName,
+            description: shipDescription,
+            team: "player",
+            timestamp: new Date().toISOString(),
+            sections: this.currentShip.sections.map(section => ({
+                id: section.id,
+                localX: section.localX,
+                localY: section.localY,
+                rotation: section.rotation || 0
+            }))
+        };
+        
+        const shipId = this.game.persistence.saveShipDesign(exportData);
+        if (shipId) {
+            alert(`Ship "${shipName}" saved to library!`);
+            this.currentShip.name = shipName;
+            this.currentShip.description = shipDescription;
+        } else {
+            alert('Failed to save ship to library');
+        }
+    }
+    
+    loadFromLibrary() {
+        if (!this.game || !this.game.persistence) {
+            alert('Persistence system not available');
+            return;
+        }
+        
+        const ships = this.game.persistence.loadAllShips();
+        const shipList = Object.entries(ships);
+        
+        if (shipList.length === 0) {
+            alert('No saved ships in library');
+            return;
+        }
+        
+        // Create a simple selection dialog
+        let message = 'Select a ship to load:\n\n';
+        shipList.forEach(([id, ship], index) => {
+            message += `${index + 1}. ${ship.name}\n`;
+        });
+        
+        const selection = prompt(message + '\nEnter number:');
+        if (!selection) return;
+        
+        const index = parseInt(selection) - 1;
+        if (index >= 0 && index < shipList.length) {
+            const [id, shipData] = shipList[index];
+            this.loadShipFromJSON(shipData);
+            alert(`Ship "${shipData.name}" loaded from library!`);
+        } else {
+            alert('Invalid selection');
+        }
     }
     
     importShipDesign() {

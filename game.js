@@ -115,6 +115,134 @@ class AudioManager {
     }
 }
 
+// Persistence System for saving game state and custom ships
+class PersistenceManager {
+    constructor() {
+        this.storagePrefix = 'bfForever_';
+        this.settingsKey = this.storagePrefix + 'settings';
+        this.shipsKey = this.storagePrefix + 'customShips';
+        this.statsKey = this.storagePrefix + 'statistics';
+    }
+    
+    // Settings persistence
+    saveSettings(settings) {
+        try {
+            localStorage.setItem(this.settingsKey, JSON.stringify(settings));
+            return true;
+        } catch (e) {
+            console.warn('Failed to save settings:', e);
+            return false;
+        }
+    }
+    
+    loadSettings() {
+        try {
+            const data = localStorage.getItem(this.settingsKey);
+            return data ? JSON.parse(data) : null;
+        } catch (e) {
+            console.warn('Failed to load settings:', e);
+            return null;
+        }
+    }
+    
+    // Custom ships persistence
+    saveShipDesign(shipData) {
+        try {
+            const ships = this.loadAllShips();
+            // Use timestamp + name as unique ID if no ID exists
+            const id = shipData.id || `${Date.now()}_${shipData.name.replace(/[^a-z0-9]/gi, '_')}`;
+            shipData.id = id;
+            shipData.savedAt = new Date().toISOString();
+            
+            ships[id] = shipData;
+            localStorage.setItem(this.shipsKey, JSON.stringify(ships));
+            return id;
+        } catch (e) {
+            console.warn('Failed to save ship design:', e);
+            return null;
+        }
+    }
+    
+    loadAllShips() {
+        try {
+            const data = localStorage.getItem(this.shipsKey);
+            return data ? JSON.parse(data) : {};
+        } catch (e) {
+            console.warn('Failed to load ships:', e);
+            return {};
+        }
+    }
+    
+    loadShipDesign(id) {
+        const ships = this.loadAllShips();
+        return ships[id] || null;
+    }
+    
+    deleteShipDesign(id) {
+        try {
+            const ships = this.loadAllShips();
+            delete ships[id];
+            localStorage.setItem(this.shipsKey, JSON.stringify(ships));
+            return true;
+        } catch (e) {
+            console.warn('Failed to delete ship:', e);
+            return false;
+        }
+    }
+    
+    // Statistics persistence
+    saveStatistics(stats) {
+        try {
+            localStorage.setItem(this.statsKey, JSON.stringify(stats));
+            return true;
+        } catch (e) {
+            console.warn('Failed to save statistics:', e);
+            return false;
+        }
+    }
+    
+    loadStatistics() {
+        try {
+            const data = localStorage.getItem(this.statsKey);
+            return data ? JSON.parse(data) : this.getDefaultStatistics();
+        } catch (e) {
+            console.warn('Failed to load statistics:', e);
+            return this.getDefaultStatistics();
+        }
+    }
+    
+    getDefaultStatistics() {
+        return {
+            skirmish: { highScore: 0, bestWave: 0, gamesPlayed: 0, totalKills: 0 },
+            grinder: { highScore: 0, longestSurvival: 0, gamesPlayed: 0, totalKills: 0 },
+            blockade: { highScore: 0, bestWave: 0, gamesPlayed: 0, totalKills: 0 },
+            sandbox: { shipsCreated: 0, timePlayed: 0 },
+            totalPlayTime: 0
+        };
+    }
+    
+    updateStatistics(mode, stats) {
+        const allStats = this.loadStatistics();
+        if (!allStats[mode]) allStats[mode] = {};
+        
+        Object.assign(allStats[mode], stats);
+        this.saveStatistics(allStats);
+        return allStats;
+    }
+    
+    clearAllData() {
+        try {
+            localStorage.removeItem(this.settingsKey);
+            localStorage.removeItem(this.shipsKey);
+            localStorage.removeItem(this.statsKey);
+            return true;
+        } catch (e) {
+            console.warn('Failed to clear data:', e);
+            return false;
+        }
+    }
+}
+
 class Vector2 {
     constructor(x = 0, y = 0) {
         this.x = x;
@@ -710,9 +838,16 @@ class BattleshipsForeverGame {
         this.doodads = [];
         this.initializeDoodads();
         
+        // Initialize persistence manager
+        this.persistence = new PersistenceManager();
+        this.statistics = this.persistence.loadStatistics();
+        
         // Initialize audio manager
         this.audio = new AudioManager();
         this.loadAudio();
+        
+        // Load saved settings
+        this.loadSavedSettings();
         
         this.setupEventListeners();
         this.initializeShipEditor();
@@ -1052,6 +1187,9 @@ class BattleshipsForeverGame {
         this.inGame = false;
         this.paused = true;
         
+        // Update statistics before showing game over screen
+        this.updateGameStatistics();
+        
         // Show game over screen with mode-specific stats
         if (this.gameMode === 'grinder') {
             document.getElementById('finalWave').textContent = this.formatTime(this.survivalTime);
@@ -1068,6 +1206,42 @@ class BattleshipsForeverGame {
         document.getElementById('instructions').style.display = 'none';
         
         this.audio.stopMusic();
+    }
+    
+    updateGameStatistics() {
+        const mode = this.gameMode;
+        if (mode === 'sandbox') return; // Don't track sandbox stats
+        
+        const stats = this.statistics[mode] || {};
+        
+        if (mode === 'skirmish' || mode === 'blockade') {
+            stats.gamesPlayed = (stats.gamesPlayed || 0) + 1;
+            stats.totalKills = (stats.totalKills || 0) + this.enemiesDefeated;
+            
+            if (this.score > (stats.highScore || 0)) {
+                stats.highScore = this.score;
+                stats.highScoreDate = new Date().toISOString();
+            }
+            
+            if (this.wave > (stats.bestWave || 0)) {
+                stats.bestWave = this.wave;
+            }
+        } else if (mode === 'grinder') {
+            stats.gamesPlayed = (stats.gamesPlayed || 0) + 1;
+            stats.totalKills = (stats.totalKills || 0) + this.enemiesDefeated;
+            
+            if (this.score > (stats.highScore || 0)) {
+                stats.highScore = this.score;
+                stats.highScoreDate = new Date().toISOString();
+            }
+            
+            if (this.survivalTime > (stats.longestSurvival || 0)) {
+                stats.longestSurvival = this.survivalTime;
+            }
+        }
+        
+        this.persistence.updateStatistics(mode, stats);
+        this.statistics = this.persistence.loadStatistics();
     }
     
     showOptions() {
@@ -1118,24 +1292,220 @@ class BattleshipsForeverGame {
         this.showMainMenu();
     }
     
+    showShipLibrary() {
+        this.audio.playSound('buttonClick');
+        const menu = document.getElementById('shipLibraryMenu');
+        menu.style.display = 'flex';
+        this.updateShipLibraryDisplay();
+    }
+    
+    hideShipLibrary() {
+        this.audio.playSound('buttonClick');
+        document.getElementById('shipLibraryMenu').style.display = 'none';
+    }
+    
+    updateShipLibraryDisplay() {
+        const listContainer = document.getElementById('shipLibraryList');
+        const ships = this.persistence.loadAllShips();
+        const shipList = Object.entries(ships);
+        
+        if (shipList.length === 0) {
+            listContainer.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No saved ships yet. Create and save your first design!</p>';
+            return;
+        }
+        
+        listContainer.innerHTML = '';
+        
+        shipList.sort((a, b) => {
+            const dateA = new Date(a[1].savedAt || a[1].timestamp);
+            const dateB = new Date(b[1].savedAt || b[1].timestamp);
+            return dateB - dateA; // Most recent first
+        });
+        
+        shipList.forEach(([id, ship]) => {
+            const shipCard = document.createElement('div');
+            shipCard.style.cssText = 'background: rgba(0, 50, 0, 0.5); border: 1px solid #00ff00; padding: 15px; margin-bottom: 10px; border-radius: 5px;';
+            
+            const savedDate = new Date(ship.savedAt || ship.timestamp);
+            const dateStr = savedDate.toLocaleDateString() + ' ' + savedDate.toLocaleTimeString();
+            
+            shipCard.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <h4 style="color: #00ff00; margin: 0 0 5px 0;">${ship.name}</h4>
+                        <p style="color: #888; font-size: 12px; margin: 0;">${ship.description || 'No description'}</p>
+                        <p style="color: #666; font-size: 11px; margin: 5px 0 0 0;">Saved: ${dateStr}</p>
+                        <p style="color: #666; font-size: 11px; margin: 0;">Sections: ${ship.sections?.length || 0}</p>
+                    </div>
+                    <div style="display: flex; gap: 5px; flex-direction: column;">
+                        <button class="btn" style="padding: 5px 10px; font-size: 12px;" onclick="game.spawnShipFromLibrary('${id}')">Deploy</button>
+                        <button class="btn" style="padding: 5px 10px; font-size: 12px;" onclick="game.deleteShipFromLibrary('${id}')">Delete</button>
+                    </div>
+                </div>
+            `;
+            
+            listContainer.appendChild(shipCard);
+        });
+    }
+    
+    spawnShipFromLibrary(shipId) {
+        const shipData = this.persistence.loadShipDesign(shipId);
+        if (!shipData) {
+            alert('Ship not found');
+            return;
+        }
+        
+        if (this.shipEditor) {
+            this.shipEditor.loadShipFromJSON(shipData);
+            this.hideShipLibrary();
+            alert(`Ship "${shipData.name}" loaded into editor. Use Ship Builder to deploy it.`);
+        }
+    }
+    
+    deleteShipFromLibrary(shipId) {
+        if (confirm('Are you sure you want to delete this ship?')) {
+            if (this.persistence.deleteShipDesign(shipId)) {
+                this.audio.playSound('buttonClick');
+                this.updateShipLibraryDisplay();
+            } else {
+                alert('Failed to delete ship');
+            }
+        }
+    }
+    
+    showStatistics() {
+        this.audio.playSound('buttonClick');
+        const menu = document.getElementById('statisticsMenu');
+        menu.style.display = 'flex';
+        this.updateStatisticsDisplay();
+    }
+    
+    hideStatistics() {
+        this.audio.playSound('buttonClick');
+        document.getElementById('statisticsMenu').style.display = 'none';
+    }
+    
+    updateStatisticsDisplay() {
+        const container = document.getElementById('statisticsContent');
+        const stats = this.statistics;
+        
+        let html = '<div style="color: #00ff00;">';
+        
+        // Skirmish stats
+        html += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0, 50, 0, 0.3); border: 1px solid #004400;">';
+        html += '<h4 style="color: #0ff; margin: 0 0 10px 0; font-size: 18px;">🎯 SKIRMISH MODE</h4>';
+        html += `<p style="margin: 5px 0;">High Score: <span style="color: #fff;">${stats.skirmish?.highScore || 0}</span></p>`;
+        html += `<p style="margin: 5px 0;">Best Wave: <span style="color: #fff;">${stats.skirmish?.bestWave || 0}</span></p>`;
+        html += `<p style="margin: 5px 0;">Games Played: <span style="color: #fff;">${stats.skirmish?.gamesPlayed || 0}</span></p>`;
+        html += `<p style="margin: 5px 0;">Total Kills: <span style="color: #fff;">${stats.skirmish?.totalKills || 0}</span></p>`;
+        html += '</div>';
+        
+        // Grinder stats
+        html += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0, 50, 0, 0.3); border: 1px solid #004400;">';
+        html += '<h4 style="color: #0ff; margin: 0 0 10px 0; font-size: 18px;">⚔️ GRINDER MODE</h4>';
+        html += `<p style="margin: 5px 0;">High Score: <span style="color: #fff;">${stats.grinder?.highScore || 0}</span></p>`;
+        const survivalTime = stats.grinder?.longestSurvival || 0;
+        html += `<p style="margin: 5px 0;">Longest Survival: <span style="color: #fff;">${this.formatTime(survivalTime)}</span></p>`;
+        html += `<p style="margin: 5px 0;">Games Played: <span style="color: #fff;">${stats.grinder?.gamesPlayed || 0}</span></p>`;
+        html += `<p style="margin: 5px 0;">Total Kills: <span style="color: #fff;">${stats.grinder?.totalKills || 0}</span></p>`;
+        html += '</div>';
+        
+        // Blockade stats
+        html += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0, 50, 0, 0.3); border: 1px solid #004400;">';
+        html += '<h4 style="color: #0ff; margin: 0 0 10px 0; font-size: 18px;">🛡️ BLOCKADE MODE</h4>';
+        html += `<p style="margin: 5px 0;">High Score: <span style="color: #fff;">${stats.blockade?.highScore || 0}</span></p>`;
+        html += `<p style="margin: 5px 0;">Best Wave: <span style="color: #fff;">${stats.blockade?.bestWave || 0}</span></p>`;
+        html += `<p style="margin: 5px 0;">Games Played: <span style="color: #fff;">${stats.blockade?.gamesPlayed || 0}</span></p>`;
+        html += `<p style="margin: 5px 0;">Total Kills: <span style="color: #fff;">${stats.blockade?.totalKills || 0}</span></p>`;
+        html += '</div>';
+        
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+    
     setSFXVolume(value) {
         this.audio.setSoundVolume(value / 100);
         document.getElementById('sfxValue').textContent = value + '%';
+        this.saveSettings();
     }
     
     setMusicVolume(value) {
         this.audio.setMusicVolume(value / 100);
         document.getElementById('musicValue').textContent = value + '%';
+        this.saveSettings();
     }
     
     setDifficulty(diff) {
         this.difficulty = diff;
         this.audio.playSound('buttonClick');
+        this.saveSettings();
     }
     
     setScrollSpeed(value) {
         this.displaySettings.scrollSpeed = parseInt(value);
         document.getElementById('scrollSpeedValue').textContent = value;
+        this.saveSettings();
+    }
+    
+    loadSavedSettings() {
+        const saved = this.persistence.loadSettings();
+        if (!saved) return;
+        
+        // Apply saved audio settings
+        if (saved.sfxVolume !== undefined) {
+            this.audio.setSoundVolume(saved.sfxVolume);
+            document.getElementById('sfxVolume').value = saved.sfxVolume * 100;
+            document.getElementById('sfxValue').textContent = Math.round(saved.sfxVolume * 100) + '%';
+        }
+        
+        if (saved.musicVolume !== undefined) {
+            this.audio.setMusicVolume(saved.musicVolume);
+            document.getElementById('musicVolume').value = saved.musicVolume * 100;
+            document.getElementById('musicValue').textContent = Math.round(saved.musicVolume * 100) + '%';
+        }
+        
+        // Apply saved difficulty
+        if (saved.difficulty) {
+            this.difficulty = saved.difficulty;
+            document.getElementById('difficulty').value = saved.difficulty;
+        }
+        
+        // Apply saved display settings
+        if (saved.displaySettings) {
+            Object.assign(this.displaySettings, saved.displaySettings);
+            
+            // Update UI checkboxes
+            if (document.getElementById('particlesToggle')) {
+                document.getElementById('particlesToggle').checked = this.displaySettings.particles;
+            }
+            if (document.getElementById('gradientsToggle')) {
+                document.getElementById('gradientsToggle').checked = this.displaySettings.gradients;
+            }
+            if (document.getElementById('shimmerToggle')) {
+                document.getElementById('shimmerToggle').checked = this.displaySettings.shimmer;
+            }
+            if (document.getElementById('doodadsToggle')) {
+                document.getElementById('doodadsToggle').checked = this.displaySettings.doodads;
+            }
+            if (document.getElementById('interpolationToggle')) {
+                document.getElementById('interpolationToggle').checked = this.displaySettings.interpolation;
+            }
+            if (document.getElementById('scrollSpeed')) {
+                document.getElementById('scrollSpeed').value = this.displaySettings.scrollSpeed;
+                document.getElementById('scrollSpeedValue').textContent = this.displaySettings.scrollSpeed;
+            }
+        }
+    }
+    
+    saveSettings() {
+        const settings = {
+            sfxVolume: this.audio.soundVolume,
+            musicVolume: this.audio.musicVolume,
+            difficulty: this.difficulty,
+            displaySettings: { ...this.displaySettings }
+        };
+        this.persistence.saveSettings(settings);
     }
     
     formatTime(seconds) {
@@ -1159,26 +1529,31 @@ class BattleshipsForeverGame {
     toggleParticles(enabled) {
         this.displaySettings.particles = enabled;
         this.audio.playSound('buttonClick');
+        this.saveSettings();
     }
     
     toggleGradients(enabled) {
         this.displaySettings.gradients = enabled;
         this.audio.playSound('buttonClick');
+        this.saveSettings();
     }
     
     toggleShimmer(enabled) {
         this.displaySettings.shimmer = enabled;
         this.audio.playSound('buttonClick');
+        this.saveSettings();
     }
     
     toggleDoodads(enabled) {
         this.displaySettings.doodads = enabled;
         this.audio.playSound('buttonClick');
+        this.saveSettings();
     }
     
     toggleInterpolation(enabled) {
         this.displaySettings.interpolation = enabled;
         this.audio.playSound('buttonClick');
+        this.saveSettings();
     }
     
     toggleFullscreen() {

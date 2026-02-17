@@ -464,7 +464,10 @@
         </div>
         
         <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #004400;">
-            <button class="btn" style="width: 100%;" onclick="game.saveCurrentShip()">Save Ship Design</button>
+            <button class="btn" style="width: 100%; margin-bottom: 5px;" onclick="game.shipEditor?.saveToLibrary()">💾 Save to Library</button>
+            <button class="btn" style="width: 100%; margin-bottom: 5px;" onclick="game.shipEditor?.loadFromLibrary()">📂 Load from Library</button>
+            <button class="btn" style="width: 100%; margin-bottom: 5px;" onclick="game.saveCurrentShip()">⬇️ Export to File</button>
+            <button class="btn" style="width: 100%;" onclick="game.showShipLibrary()">📚 View Ship Library</button>
         </div>
     </div>
     
@@ -474,6 +477,7 @@
         <h2>HTML5 Edition</h2>
         <button class="menu-btn" onclick="game.startGame('sandbox')">SANDBOX MODE</button>
         <button class="menu-btn" onclick="game.showGameModeMenu()">SKIRMISH MODES</button>
+        <button class="menu-btn" onclick="game.showStatistics()">STATISTICS</button>
         <button class="menu-btn" onclick="game.showOptions()">OPTIONS</button>
         <button class="menu-btn" onclick="window.open('https://github.com/sethrimer3/BattleShipsForever', '_blank')">ABOUT</button>
         <p style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #00ff00; font-size: 12px; text-align: center; opacity: 0.7;">
@@ -501,6 +505,31 @@
         <button class="menu-btn" onclick="game.startGame('grinder')">GRINDER</button>
         <button class="menu-btn" onclick="game.startGame('blockade')">BLOCKADE</button>
         <button class="menu-btn" onclick="game.hideGameModeMenu()" style="margin-top: 20px;">BACK</button>
+    </div>
+    
+    <!-- Ship Library Menu -->
+    <div id="shipLibraryMenu" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100;">
+        <div style="width: 600px; max-height: 80vh; background: rgba(0, 20, 0, 0.95); border: 2px solid #00ff00; padding: 30px; overflow-y: auto;">
+            <h3 style="color: #00ff00; margin-bottom: 20px; text-align: center; font-size: 28px;">SHIP LIBRARY</h3>
+            <p style="color: #888; margin-bottom: 20px; text-align: center; font-size: 14px;">
+                Your saved custom ship designs
+            </p>
+            <div id="shipLibraryList" style="max-height: 400px; overflow-y: auto;">
+                <!-- Ships will be dynamically added here -->
+            </div>
+            <button class="menu-btn" onclick="game.hideShipLibrary()" style="margin-top: 20px; width: 100%;">CLOSE</button>
+        </div>
+    </div>
+    
+    <!-- Statistics Menu -->
+    <div id="statisticsMenu" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100;">
+        <div style="width: 600px; max-height: 80vh; background: rgba(0, 20, 0, 0.95); border: 2px solid #00ff00; padding: 30px; overflow-y: auto;">
+            <h3 style="color: #00ff00; margin-bottom: 20px; text-align: center; font-size: 28px;">STATISTICS</h3>
+            <div id="statisticsContent">
+                <!-- Statistics will be dynamically added here -->
+            </div>
+            <button class="menu-btn" onclick="game.hideStatistics()" style="margin-top: 20px; width: 100%;">CLOSE</button>
+        </div>
     </div>
     
     <!-- Options Menu -->
