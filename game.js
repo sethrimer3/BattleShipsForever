@@ -223,6 +223,25 @@ class Ship {
         this.targetPosition = null;
         this.targetEnemy = null;
         
+        // Team colors based on original game's bfdefault.ini
+        this.teamColors = {
+            player: {
+                primary: 'rgb(0, 255, 0)',    // Green
+                secondary: 'rgb(64, 255, 64)',
+                tertiary: 'rgb(128, 255, 128)'
+            },
+            enemy: {
+                primary: 'rgb(255, 0, 0)',    // Red (Pirate)
+                secondary: 'rgb(255, 64, 64)',
+                tertiary: 'rgb(155, 45, 45)'
+            },
+            alien: {
+                primary: 'rgb(255, 0, 255)',  // Magenta
+                secondary: 'rgb(128, 0, 255)',
+                tertiary: 'rgb(255, 128, 255)'
+            }
+        };
+        
         // Add a default core section
         this.addSection(new ShipSection('core', 'medium', 0, 0));
         
@@ -248,8 +267,16 @@ class Ship {
         this.alive = this.health > 0;
     }
     
-    update(dt, ships, projectiles, audio) {
+    update(dt, ships, projectiles, audio, difficulty = 'normal') {
         if (!this.alive) return;
+        
+        // Difficulty modifiers
+        const difficultySettings = {
+            easy: { aimAccuracy: 0.5, fireDistance: 350, rotationSpeed: 0.05, reactionTime: 1.5 },
+            normal: { aimAccuracy: 0.3, fireDistance: 400, rotationSpeed: 0.08, reactionTime: 1.0 },
+            hard: { aimAccuracy: 0.15, fireDistance: 450, rotationSpeed: 0.12, reactionTime: 0.5 }
+        };
+        const settings = difficultySettings[difficulty] || difficultySettings.normal;
         
         // AI behavior for enemy ships
         if (this.team === 'enemy' && !this.targetEnemy) {
@@ -295,16 +322,17 @@ class Ship {
             const toEnemy = this.targetEnemy.position.subtract(this.position);
             const distance = toEnemy.length();
             
-            // Rotate to face enemy
+            // Rotate to face enemy (speed based on difficulty)
             const targetAngle = Math.atan2(toEnemy.y, toEnemy.x);
             let angleDiff = targetAngle - this.angle;
             while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
             while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-            this.angle += angleDiff * 0.08;
+            this.angle += angleDiff * settings.rotationSpeed;
             
-            // Fire weapons if in range and facing target
-            if (distance < 400 && Math.abs(angleDiff) < 0.3) {
+            // Fire weapons if in range and facing target (accuracy based on difficulty)
+            if (distance < settings.fireDistance && Math.abs(angleDiff) < settings.aimAccuracy) {
                 this.fireWeapons(projectiles, Date.now(), audio);
+            }
             }
             
             // Move towards enemy if too far
@@ -526,6 +554,42 @@ class Ship {
             ctx.arc(0, 0, size + 10, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([]);
+        }
+        
+        // Shield visualization
+        const shieldSections = this.sections.filter(s => s.type === 'shield');
+        if (shieldSections.length > 0) {
+            const totalShield = shieldSections.reduce((sum, s) => sum + (s.shieldStrength || 0), 0);
+            if (totalShield > 0) {
+                const size = Math.max(...this.sections.map(s => 
+                    Math.sqrt(s.localX * s.localX + s.localY * s.localY) + s.radius
+                )) + 15;
+                
+                // Animated shield effect
+                const time = Date.now() / 1000;
+                const shimmer = Math.sin(time * 2) * 0.1 + 0.9;
+                
+                ctx.strokeStyle = `rgba(136, 204, 255, ${0.3 * shimmer})`;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 5]);
+                ctx.beginPath();
+                ctx.arc(0, 0, size, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Shield glow
+                ctx.save();
+                ctx.globalAlpha = 0.1 * shimmer;
+                const shieldGradient = ctx.createRadialGradient(0, 0, size - 10, 0, 0, size);
+                shieldGradient.addColorStop(0, '#88ccff00');
+                shieldGradient.addColorStop(0.8, '#88ccff88');
+                shieldGradient.addColorStop(1, '#88ccff00');
+                ctx.fillStyle = shieldGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
         }
         
         ctx.restore();
@@ -887,7 +951,7 @@ class BattleshipsForeverGame {
         }
         
         // Update ships
-        this.ships.forEach(ship => ship.update(dt, this.ships, this.projectiles, this.audio));
+        this.ships.forEach(ship => ship.update(dt, this.ships, this.projectiles, this.audio, this.difficulty));
         
         // Update projectiles
         const currentTime = performance.now() / 1000;
@@ -940,16 +1004,21 @@ class BattleshipsForeverGame {
                 if (dist < 30) {
                     ship.takeDamage(proj.damage, this.audio);
                     
-                    // Create explosion particles
-                    for (let i = 0; i < 10; i++) {
+                    // Create enhanced explosion particles
+                    const particleCount = proj.damage > 30 ? 20 : 15; // More particles for high damage
+                    for (let i = 0; i < particleCount; i++) {
                         const angle = Math.random() * Math.PI * 2;
-                        const speed = 50 + Math.random() * 100;
+                        const speed = 50 + Math.random() * 150;
+                        const size = 2 + Math.random() * 3;
                         this.particles.push({
                             position: proj.position,
                             velocity: new Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed),
-                            life: 0.5,
+                            life: 0.5 + Math.random() * 0.3,
                             createdAt: currentTime,
-                            color: proj.type === 'laser' ? '#00ffff' : '#ff8800'
+                            size: size,
+                            color: proj.type === 'laser' ? '#00ffff' : 
+                                   proj.type === 'missile' ? '#ffff00' :
+                                   proj.type === 'railgun' ? '#ff00ff' : '#ff8800'
                         });
                     }
                     
@@ -1156,7 +1225,7 @@ class BattleshipsForeverGame {
             ctx.restore();
         });
         
-        // Draw particles
+        // Draw particles with enhanced visuals
         const currentTime = performance.now() / 1000;
         this.particles.forEach(particle => {
             const screenPos = particle.position.subtract(this.camera);
@@ -1165,8 +1234,28 @@ class BattleshipsForeverGame {
             
             this.ctx.save();
             this.ctx.globalAlpha = alpha;
-            this.ctx.fillStyle = particle.color;
-            this.ctx.fillRect(screenPos.x - 1, screenPos.y - 1, 2, 2);
+            
+            // Add glow effect to particles
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = particle.color;
+            
+            // Use particle size if available
+            const size = particle.size || 2;
+            
+            // Draw particle with gradient
+            const gradient = this.ctx.createRadialGradient(
+                screenPos.x, screenPos.y, 0,
+                screenPos.x, screenPos.y, size
+            );
+            gradient.addColorStop(0, particle.color);
+            gradient.addColorStop(0.5, particle.color + '88');
+            gradient.addColorStop(1, particle.color + '00');
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(screenPos.x, screenPos.y, size, 0, Math.PI * 2);
+            this.ctx.fill();
+            
             this.ctx.restore();
         });
         
