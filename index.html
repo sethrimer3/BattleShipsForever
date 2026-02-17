@@ -158,6 +158,67 @@
             font-weight: bold;
         }
         
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(-20px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(20px); }
+        }
+        
+        /* Wave Announcements */
+        .wave-announcement {
+            display: none;
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
+        .wave-announcement h1 {
+            color: #ffff00;
+            font-size: 64px;
+            text-shadow: 0 0 30px #ffff00;
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        .wave-announcement p {
+            color: #00ff00;
+            font-size: 20px;
+            margin-top: 10px;
+        }
+        
+        .wave-complete {
+            display: none;
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
+        .wave-complete h1 {
+            color: #00ff00;
+            font-size: 48px;
+            text-shadow: 0 0 20px #00ff00;
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        .wave-complete p {
+            color: #00ff00;
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        
         /* Main Menu Overlay */
         #mainMenu {
             position: absolute;
@@ -208,6 +269,56 @@
             background: #004400;
             box-shadow: 0 0 20px #00ff00;
             transform: scale(1.05);
+        }
+        
+        /* Game Mode Selection Menu */
+        #gameModeMenu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        #gameModeMenu.active {
+            display: flex;
+        }
+        
+        #gameModeMenu h3 {
+            font-size: 32px;
+            color: #00ff00;
+            text-shadow: 0 0 15px #00ff00;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .mode-description-box {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #004400;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .mode-description-box p {
+            margin-bottom: 15px;
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        .mode-description-item {
+            margin-bottom: 10px;
+        }
+        
+        .mode-description-item strong {
+            color: #0ff;
         }
         
         /* Options Menu */
@@ -362,13 +473,34 @@
         <h1>BATTLESHIPS FOREVER</h1>
         <h2>HTML5 Edition</h2>
         <button class="menu-btn" onclick="game.startGame('sandbox')">SANDBOX MODE</button>
-        <button class="menu-btn" onclick="game.startGame('skirmish')">SKIRMISH MODE</button>
+        <button class="menu-btn" onclick="game.showGameModeMenu()">SKIRMISH MODES</button>
         <button class="menu-btn" onclick="game.showOptions()">OPTIONS</button>
         <button class="menu-btn" onclick="window.open('https://github.com/sethrimer3/BattleShipsForever', '_blank')">ABOUT</button>
         <p style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #00ff00; font-size: 12px; text-align: center; opacity: 0.7;">
             Original Game by Sean "th15" Chan © 2007-2009<br>
             HTML5 Adaptation - Community Project
         </p>
+    </div>
+    
+    <!-- Game Mode Selection Menu -->
+    <div id="gameModeMenu">
+        <h3>SELECT SKIRMISH MODE</h3>
+        <div class="mode-description-box">
+            <p>Choose your battle:</p>
+            <div class="mode-description-item">
+                <strong>SKIRMISH:</strong> Progressive wave-based combat. Defeat each wave to advance!
+            </div>
+            <div class="mode-description-item">
+                <strong>GRINDER:</strong> Endless survival mode. How long can you last?
+            </div>
+            <div class="mode-description-item">
+                <strong>BLOCKADE:</strong> Defend your position! Enemies attack from the right.
+            </div>
+        </div>
+        <button class="menu-btn" onclick="game.startGame('skirmish')">SKIRMISH</button>
+        <button class="menu-btn" onclick="game.startGame('grinder')">GRINDER</button>
+        <button class="menu-btn" onclick="game.startGame('blockade')">BLOCKADE</button>
+        <button class="menu-btn" onclick="game.hideGameModeMenu()" style="margin-top: 20px;">BACK</button>
     </div>
     
     <!-- Options Menu -->
@@ -448,18 +580,24 @@
     </div>
     
     <!-- Wave Complete Overlay -->
-    <div id="waveComplete" style="display: none; position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 50; pointer-events: none;">
-        <h1 style="color: #00ff00; font-size: 48px; text-shadow: 0 0 20px #00ff00; animation: pulse 0.5s ease-in-out;">WAVE COMPLETE</h1>
-        <p style="color: #00ff00; font-size: 24px; margin-top: 10px;">+<span id="waveBonus">0</span> POINTS</p>
+    <div id="waveComplete" class="wave-complete">
+        <h1>WAVE COMPLETE</h1>
+        <p>+<span id="waveBonus">0</span> POINTS</p>
+    </div>
+    
+    <!-- Wave Start Announcement -->
+    <div id="waveAnnouncement" class="wave-announcement">
+        <h1>WAVE <span id="waveNumber">1</span></h1>
+        <p>PREPARE FOR BATTLE</p>
     </div>
     
     <!-- Game Over Screen -->
     <div id="gameOverScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 102;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
             <h1 style="color: #ff0000; font-size: 64px; text-shadow: 0 0 30px #ff0000; margin-bottom: 20px;">GAME OVER</h1>
-            <p style="color: #00ff00; font-size: 32px; margin: 10px 0;">Wave Reached: <span id="finalWave">0</span></p>
+            <p style="color: #00ff00; font-size: 32px; margin: 10px 0;"><span id="waveLabel">Wave Reached:</span> <span id="finalWave">0</span></p>
             <p style="color: #00ff00; font-size: 32px; margin: 10px 0;">Final Score: <span id="finalScore">0</span></p>
-            <button class="menu-btn" onclick="game.startGame('skirmish')" style="margin-top: 30px;">TRY AGAIN</button>
+            <button class="menu-btn" onclick="game.showGameModeMenu()" style="margin-top: 30px;">TRY AGAIN</button>
             <button class="menu-btn" onclick="game.returnToMainMenu()">MAIN MENU</button>
             <p style="color: #888; font-size: 14px; margin-top: 20px;">Press ESC to return to main menu</p>
         </div>

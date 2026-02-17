@@ -18,6 +18,11 @@ const BUTTON_HOVER_SOUND_CHANCE = 0.3; // 30% chance to play hover sound on regu
 // Explosion size thresholds
 const LARGE_SECTION_THRESHOLD = 30; // Sections larger than this use big explosion sounds
 
+// Game mode constants
+const GRINDER_SPAWN_INTERVAL_MS = 3000; // Time between enemy spawns in grinder mode
+const GRINDER_WAVE_PROGRESSION_SECONDS = 30; // Seconds before difficulty increases
+const BLOCKADE_SPAWN_DELAY_MS = 800; // Delay between enemy spawns in blockade mode
+
 // Audio System
 class AudioManager {
     constructor() {
@@ -677,13 +682,15 @@ class BattleshipsForeverGame {
         this.paused = false;
         this.inGame = false;
         this.difficulty = 'normal';
-        this.gameMode = 'sandbox'; // sandbox, skirmish
+        this.gameMode = 'sandbox'; // sandbox, skirmish, grinder, blockade
         
-        // Skirmish mode state
+        // Skirmish/Grinder/Blockade mode state
         this.wave = 0;
         this.enemiesRemaining = 0;
         this.score = 0;
         this.waveActive = false;
+        this.survivalTime = 0; // For grinder mode
+        this.enemiesDefeated = 0; // For tracking kills
         
         // Screen effects
         this.screenShake = 0;
@@ -774,10 +781,18 @@ class BattleshipsForeverGame {
     
     startGame(mode = 'sandbox') {
         this.audio.playSound('buttonClick');
+        
+        // Clean up any existing grinder spawn interval
+        if (this.grinderSpawnInterval) {
+            clearInterval(this.grinderSpawnInterval);
+            this.grinderSpawnInterval = null;
+        }
+        
         this.inGame = true;
         this.paused = false;
         this.gameMode = mode;
         document.getElementById('mainMenu').classList.add('hidden');
+        document.getElementById('gameModeMenu').classList.remove('active');
         document.getElementById('gameOverScreen').style.display = 'none';
         document.getElementById('ui').style.display = 'flex';
         document.getElementById('instructions').style.display = 'block';
@@ -786,6 +801,10 @@ class BattleshipsForeverGame {
         // Initialize game mode
         if (mode === 'skirmish') {
             this.startSkirmish();
+        } else if (mode === 'grinder') {
+            this.startGrinder();
+        } else if (mode === 'blockade') {
+            this.startBlockade();
         }
     }
     
@@ -794,6 +813,7 @@ class BattleshipsForeverGame {
         this.wave = 0;
         this.score = 0;
         this.enemiesRemaining = 0;
+        this.enemiesDefeated = 0;
         this.waveActive = false;
         this.ships = [];
         this.projectiles = [];
@@ -816,9 +836,111 @@ class BattleshipsForeverGame {
         this.updateUI();
     }
     
+    startGrinder() {
+        // Grinder mode: Endless survival with continuous enemy spawning
+        this.wave = 1;
+        this.score = 0;
+        this.enemiesRemaining = 0;
+        this.enemiesDefeated = 0;
+        this.survivalTime = 0;
+        this.waveActive = true;
+        this.ships = [];
+        this.projectiles = [];
+        this.particles = [];
+        
+        // Show grinder mode announcement
+        const announcement = document.getElementById('waveAnnouncement');
+        const waveNumberSpan = document.getElementById('waveNumber');
+        const titleHeading = announcement.querySelector('h1');
+        const prepareText = announcement.querySelector('p');
+        
+        // Store original content as strings
+        const originalTitle = titleHeading.textContent;
+        const originalSubtitle = prepareText.textContent;
+        
+        // Temporarily update content
+        waveNumberSpan.style.display = 'none';
+        titleHeading.textContent = 'GRINDER MODE';
+        prepareText.textContent = 'SURVIVE AS LONG AS YOU CAN';
+        announcement.style.display = 'block';
+        announcement.style.animation = 'fadeInOut 3s ease-in-out';
+        
+        setTimeout(() => {
+            announcement.style.display = 'none';
+            announcement.style.animation = '';
+            // Restore original content
+            titleHeading.textContent = originalTitle;
+            waveNumberSpan.style.display = '';
+            prepareText.textContent = originalSubtitle;
+        }, 3000);
+        
+        // Spawn player ship
+        const playerShip = new Ship(
+            this.canvas.width / 2 + this.camera.x,
+            this.canvas.height / 2 + this.camera.y,
+            'player'
+        );
+        playerShip.addSection(new ShipSection('cannon', 'medium', 30, 0));
+        playerShip.addSection(new ShipSection('cannon', 'medium', -30, 0));
+        playerShip.addSection(new ShipSection('laser', 'medium', 0, 30));
+        playerShip.addSection(new ShipSection('missile', 'medium', 0, -30));
+        this.ships.push(playerShip);
+        
+        // Start continuous spawning
+        this.grinderSpawnInterval = setInterval(() => {
+            if (this.inGame && !this.paused && this.gameMode === 'grinder') {
+                // Check if player is still alive before spawning
+                const playerAlive = this.ships.some(s => s.alive && s.team === 'player');
+                if (!playerAlive) {
+                    clearInterval(this.grinderSpawnInterval);
+                    this.grinderSpawnInterval = null;
+                    return;
+                }
+                
+                const factions = ['enemy', 'pirate', 'alien', 'razor'];
+                const faction = factions[Math.floor(Math.random() * factions.length)];
+                this.spawnEnemyShip(faction);
+                this.enemiesRemaining++; // Track spawned enemies for kill counting
+            }
+        }, GRINDER_SPAWN_INTERVAL_MS);
+        
+        this.updateUI();
+    }
+    
+    startBlockade() {
+        // Blockade mode: Defend position, enemies come from the right
+        this.wave = 0;
+        this.score = 0;
+        this.enemiesRemaining = 0;
+        this.enemiesDefeated = 0;
+        this.waveActive = false;
+        this.ships = [];
+        this.projectiles = [];
+        this.particles = [];
+        
+        // Spawn player ship on the left side
+        const playerShip = new Ship(
+            this.canvas.width * 0.25 + this.camera.x,
+            this.canvas.height / 2 + this.camera.y,
+            'player'
+        );
+        playerShip.addSection(new ShipSection('cannon', 'medium', 30, 0));
+        playerShip.addSection(new ShipSection('cannon', 'medium', -30, 0));
+        playerShip.addSection(new ShipSection('railgun', 'medium', 0, 30));
+        playerShip.addSection(new ShipSection('laser', 'medium', 0, -30));
+        this.ships.push(playerShip);
+        
+        // Start first wave
+        this.nextWaveBlockade();
+        this.updateUI();
+    }
+    
     nextWave() {
         this.wave++;
         this.waveActive = true;
+        
+        // Show wave announcement
+        this.showWaveAnnouncement(this.wave);
         
         // Switch to more intense music for higher waves
         if (this.wave === 5 && this.audio.currentMusicTrack !== 'Battlemusic.ogg') {
@@ -840,8 +962,54 @@ class BattleshipsForeverGame {
         this.audio.playSound('deploy');
     }
     
+    nextWaveBlockade() {
+        this.wave++;
+        this.waveActive = true;
+        
+        // Show wave announcement
+        this.showWaveAnnouncement(this.wave);
+        
+        // Switch to more intense music for higher waves
+        if (this.wave === 5 && this.audio.currentMusicTrack !== 'Battlemusic.ogg') {
+            this.audio.playMusic('Battlemusic.ogg');
+        }
+        
+        // Spawn enemies from the right side
+        const enemyCount = Math.min(3 + this.wave, 12);
+        const factions = ['enemy', 'pirate', 'alien', 'razor'];
+        
+        for (let i = 0; i < enemyCount; i++) {
+            setTimeout(() => {
+                const faction = factions[Math.floor(Math.random() * factions.length)];
+                // Spawn on the right side of the screen
+                const enemy = new Ship(
+                    this.canvas.width + 200 + this.camera.x,
+                    Math.random() * this.canvas.height + this.camera.y,
+                    faction
+                );
+                
+                // Add weapon sections based on faction
+                if (faction === 'alien') {
+                    enemy.addSection(new ShipSection('laser', 'medium', 20, 0));
+                    enemy.addSection(new ShipSection('laser', 'medium', -20, 0));
+                } else if (faction === 'razor') {
+                    enemy.addSection(new ShipSection('railgun', 'medium', 0, 20));
+                    enemy.addSection(new ShipSection('cannon', 'medium', 0, -20));
+                } else {
+                    enemy.addSection(new ShipSection('cannon', 'medium', 15, 15));
+                    enemy.addSection(new ShipSection('missile', 'medium', -15, -15));
+                }
+                
+                this.ships.push(enemy);
+                this.enemiesRemaining++;
+            }, i * BLOCKADE_SPAWN_DELAY_MS);
+        }
+        
+        this.audio.playSound('deploy');
+    }
+    
     checkSkirmishWave() {
-        if (this.gameMode !== 'skirmish' || !this.waveActive) return;
+        if ((this.gameMode !== 'skirmish' && this.gameMode !== 'blockade') || !this.waveActive) return;
         
         // Count remaining enemies
         const enemyCount = this.ships.filter(s => s.alive && s.team !== 'player').length;
@@ -867,6 +1035,8 @@ class BattleshipsForeverGame {
                 waveCompleteEl.style.display = 'none';
                 if (this.gameMode === 'skirmish' && this.inGame) {
                     this.nextWave();
+                } else if (this.gameMode === 'blockade' && this.inGame) {
+                    this.nextWaveBlockade();
                 }
             }, 3000);
         }
@@ -882,9 +1052,17 @@ class BattleshipsForeverGame {
         this.inGame = false;
         this.paused = true;
         
-        // Show game over screen
-        document.getElementById('finalWave').textContent = this.wave;
-        document.getElementById('finalScore').textContent = this.score;
+        // Show game over screen with mode-specific stats
+        if (this.gameMode === 'grinder') {
+            document.getElementById('finalWave').textContent = this.formatTime(this.survivalTime);
+            document.getElementById('waveLabel').textContent = 'Survival Time:';
+            document.getElementById('finalScore').textContent = `${this.score} (${this.enemiesDefeated} kills)`;
+        } else {
+            document.getElementById('waveLabel').textContent = 'Wave Reached:';
+            document.getElementById('finalWave').textContent = this.wave;
+            document.getElementById('finalScore').textContent = this.score;
+        }
+        
         document.getElementById('gameOverScreen').style.display = 'block';
         document.getElementById('ui').style.display = 'none';
         document.getElementById('instructions').style.display = 'none';
@@ -902,6 +1080,18 @@ class BattleshipsForeverGame {
         document.getElementById('optionsMenu').classList.remove('active');
     }
     
+    showGameModeMenu() {
+        this.audio.playSound('buttonClick');
+        document.getElementById('gameModeMenu').classList.add('active');
+        document.getElementById('mainMenu').classList.add('hidden');
+    }
+    
+    hideGameModeMenu() {
+        this.audio.playSound('buttonClick');
+        document.getElementById('gameModeMenu').classList.remove('active');
+        document.getElementById('mainMenu').classList.remove('hidden');
+    }
+    
     pauseGame() {
         if (!this.inGame) return;
         this.paused = true;
@@ -917,6 +1107,13 @@ class BattleshipsForeverGame {
     returnToMainMenu() {
         this.audio.playSound('buttonExit');
         document.getElementById('pauseMenu').classList.remove('active');
+        
+        // Clean up grinder spawn interval if active
+        if (this.grinderSpawnInterval) {
+            clearInterval(this.grinderSpawnInterval);
+            this.grinderSpawnInterval = null;
+        }
+        
         this.reset();
         this.showMainMenu();
     }
@@ -939,6 +1136,24 @@ class BattleshipsForeverGame {
     setScrollSpeed(value) {
         this.displaySettings.scrollSpeed = parseInt(value);
         document.getElementById('scrollSpeedValue').textContent = value;
+    }
+    
+    formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    showWaveAnnouncement(waveNum) {
+        const announcement = document.getElementById('waveAnnouncement');
+        document.getElementById('waveNumber').textContent = waveNum;
+        announcement.style.display = 'block';
+        announcement.style.animation = 'fadeInOut 2s ease-in-out';
+        
+        setTimeout(() => {
+            announcement.style.display = 'none';
+            announcement.style.animation = '';
+        }, 2000);
     }
     
     toggleParticles(enabled) {
@@ -1441,9 +1656,34 @@ class BattleshipsForeverGame {
         // Clean up dead ships from selection
         this.selectedShips = this.selectedShips.filter(s => s.alive);
         
-        // Check skirmish mode wave progress
-        if (this.gameMode === 'skirmish') {
+        // Handle game mode specific updates
+        if (this.gameMode === 'skirmish' || this.gameMode === 'blockade') {
             this.checkSkirmishWave();
+        } else if (this.gameMode === 'grinder' && this.inGame) {
+            // Track survival time in grinder mode
+            this.survivalTime += dt;
+            
+            // Update wave/difficulty based on survival time
+            this.wave = Math.floor(this.survivalTime / GRINDER_WAVE_PROGRESSION_SECONDS) + 1;
+            
+            // Track enemy kills for scoring
+            const currentEnemyCount = this.ships.filter(s => s.alive && s.team !== 'player').length;
+            if (currentEnemyCount < this.enemiesRemaining) {
+                const killed = this.enemiesRemaining - currentEnemyCount;
+                this.enemiesDefeated += killed;
+                this.score += killed * 50; // 50 points per kill
+                this.enemiesRemaining = currentEnemyCount;
+            }
+            
+            // Check if player is dead
+            const playerAlive = this.ships.some(s => s.alive && s.team === 'player');
+            if (!playerAlive) {
+                if (this.grinderSpawnInterval) {
+                    clearInterval(this.grinderSpawnInterval);
+                    this.grinderSpawnInterval = null;
+                }
+                this.gameOver();
+            }
         }
     }
     
@@ -1820,10 +2060,16 @@ class BattleshipsForeverGame {
         document.getElementById('shipCount').textContent = 
             `Ships: ${this.ships.filter(s => s.alive).length}`;
         
-        // Update mode display
-        let modeText = this.gameMode === 'skirmish' ? 'Skirmish' : 'Sandbox';
-        if (this.gameMode === 'skirmish') {
-            modeText += ` | Wave: ${this.wave} | Score: ${this.score}`;
+        // Update mode display based on game mode
+        let modeText = '';
+        if (this.gameMode === 'sandbox') {
+            modeText = 'Sandbox';
+        } else if (this.gameMode === 'skirmish') {
+            modeText = `Skirmish | Wave: ${this.wave} | Score: ${this.score}`;
+        } else if (this.gameMode === 'grinder') {
+            modeText = `Grinder | Time: ${this.formatTime(this.survivalTime)} | Kills: ${this.enemiesDefeated} | Score: ${this.score}`;
+        } else if (this.gameMode === 'blockade') {
+            modeText = `Blockade | Wave: ${this.wave} | Score: ${this.score}`;
         }
         document.getElementById('mode').textContent = `Mode: ${modeText}`;
     }
