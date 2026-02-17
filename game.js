@@ -385,9 +385,16 @@ class Ship {
                 if (currentTime - section.lastFired > section.fireRate) {
                     section.lastFired = currentTime;
                     
-                    // Play weapon sound effect
+                    // Play weapon sound effect with variety
                     if (audio) {
-                        audio.playSound(section.type);
+                        // Use sound variations for more authentic experience
+                        if (section.type === 'laser' && Math.random() > 0.5) {
+                            audio.playSound('laser2');
+                        } else if (section.type === 'missile' && Math.random() > 0.7) {
+                            audio.playSound('miniMissile');
+                        } else {
+                            audio.playSound(section.type);
+                        }
                     }
                     
                     // Calculate weapon position in world space
@@ -450,7 +457,7 @@ class Ship {
             
             // Play explosion sound (randomize for variety)
             if (audio) {
-                const explosionSounds = ['explosion', 'explosion1', 'explosion2', 'explosion3'];
+                const explosionSounds = ['explosion', 'explosion1', 'explosion2', 'explosion3', 'explosion4', 'explosion5'];
                 const randomSound = explosionSounds[Math.floor(Math.random() * explosionSounds.length)];
                 audio.playSound(randomSound);
             }
@@ -703,7 +710,8 @@ class BattleshipsForeverGame {
         document.getElementById('instructions').style.display = 'none';
         document.getElementById('gameOverScreen').style.display = 'none';
         document.getElementById('pauseMenu').classList.remove('active');
-        this.audio.playMusic('Thememusic.ogg');
+        // Use Briefingmusic for main menu - more menu-appropriate than Theme
+        this.audio.playMusic('Briefingmusic.ogg');
     }
     
     initializeDoodads() {
@@ -796,6 +804,11 @@ class BattleshipsForeverGame {
         this.wave++;
         this.waveActive = true;
         
+        // Switch to more intense music for higher waves
+        if (this.wave === 5 && this.audio.currentMusicTrack !== 'Battlemusic.ogg') {
+            this.audio.playMusic('Battlemusic.ogg');
+        }
+        
         // Spawn enemies based on wave number
         const enemyCount = Math.min(2 + this.wave, 10);
         const factions = ['enemy', 'pirate', 'alien', 'razor'];
@@ -883,7 +896,7 @@ class BattleshipsForeverGame {
     }
     
     returnToMainMenu() {
-        this.audio.playSound('buttonClick');
+        this.audio.playSound('buttonExit');
         document.getElementById('pauseMenu').classList.remove('active');
         this.reset();
         this.showMainMenu();
@@ -935,22 +948,39 @@ class BattleshipsForeverGame {
     }
     
     loadAudio() {
-        // Load weapon firing sound effects
+        // Load weapon firing sound effects - multiple variations for variety
         this.audio.loadSound('cannon', 'ORIGINAL/Sounds/snd_Blaster.wav');
         this.audio.loadSound('laser', 'ORIGINAL/Sounds/snd_BeamFire1.wav');
+        this.audio.loadSound('laser2', 'ORIGINAL/Sounds/snd_BeamFire2.wav');
+        this.audio.loadSound('beamLoop', 'ORIGINAL/Sounds/snd_BeamLoop.wav');
         this.audio.loadSound('missile', 'ORIGINAL/Sounds/snd_MissileLaunch.wav');
+        this.audio.loadSound('miniMissile', 'ORIGINAL/Sounds/snd_MiniMissileFire.wav');
         this.audio.loadSound('railgun', 'ORIGINAL/Sounds/snd_Dieterling.wav');
+        this.audio.loadSound('dualScatter', 'ORIGINAL/Sounds/snd_DualScatter.wav');
+        this.audio.loadSound('driver', 'ORIGINAL/Sounds/snd_Driver.wav');
+        this.audio.loadSound('lancet', 'ORIGINAL/Sounds/snd_Lancet.wav');
         
-        // Load explosion sound effects
+        // Load explosion sound effects - more variety
         this.audio.loadSound('explosion', 'ORIGINAL/Sounds/snd_ExpShockwave.wav');
         this.audio.loadSound('explosion1', 'ORIGINAL/Sounds/snd_FlashBoltExplode.wav');
         this.audio.loadSound('explosion2', 'ORIGINAL/Sounds/snd_FlashBoltExplode2.wav');
         this.audio.loadSound('explosion3', 'ORIGINAL/Sounds/snd_RAShellExplode.wav');
+        this.audio.loadSound('explosion4', 'ORIGINAL/Sounds/snd_FlashBoltExplode3.wav');
+        this.audio.loadSound('explosion5', 'ORIGINAL/Sounds/snd_FlashBoltExplode4.wav');
+        
+        // Load shield/impact sounds
+        this.audio.loadSound('shieldHit', 'ORIGINAL/Sounds/snd_DeflectorActivate.wav');
         
         // Load UI sound effects
         this.audio.loadSound('buttonClick', 'ORIGINAL/Sounds/snd_ClickButton.wav');
+        this.audio.loadSound('buttonExit', 'ORIGINAL/Sounds/snd_ClickButtonExit.wav');
         this.audio.loadSound('selectShip', 'ORIGINAL/Sounds/snd_ChooseShip.wav');
         this.audio.loadSound('deploy', 'ORIGINAL/Sounds/snd_DeployPlatform.wav');
+        this.audio.loadSound('issueOrder', 'ORIGINAL/Sounds/snd_IssueOrder.wav');
+        this.audio.loadSound('negativeOrder', 'ORIGINAL/Sounds/snd_NegativeOrder.wav');
+        
+        // Load engine/booster sounds
+        this.audio.loadSound('boosterActivate', 'ORIGINAL/Sounds/snd_BoosterActivate.wav');
         
         // Music will be started by menu system
     }
@@ -1054,9 +1084,13 @@ class BattleshipsForeverGame {
             );
             
             // Issue move order to selected ships
-            this.selectedShips.forEach(ship => {
-                ship.targetPosition = worldPos;
-            });
+            if (this.selectedShips.length > 0) {
+                this.selectedShips.forEach(ship => {
+                    ship.targetPosition = worldPos;
+                });
+                // Play order sound when commanding ships
+                this.audio.playSound('issueOrder');
+            }
         });
     }
     
