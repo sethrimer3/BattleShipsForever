@@ -5,6 +5,7 @@
 const SCREEN_SHAKE_INTENSITY = 0.05;
 const MAX_SCREEN_SHAKE = 10;
 const SCREEN_SHAKE_DECAY = 0.9;
+const DEFAULT_SCROLL_SPEED = 20; // Match original bfdefault.ini
 
 // Audio System
 class AudioManager {
@@ -673,7 +674,7 @@ class BattleshipsForeverGame {
             shimmer: true,
             doodads: true,
             interpolation: true,
-            scrollSpeed: 20
+            scrollSpeed: DEFAULT_SCROLL_SPEED
         };
         
         // Initialize space doodads (asteroids, debris)
@@ -718,7 +719,7 @@ class BattleshipsForeverGame {
         // Spawn doodads in a large area around origin
         for (let i = 0; i < 30; i++) {
             const type = doodadTypes[Math.floor(Math.random() * doodadTypes.length)];
-            this.doodads.push({
+            const doodad = {
                 x: (Math.random() - 0.5) * 3000,
                 y: (Math.random() - 0.5) * 3000,
                 size: type.size,
@@ -727,7 +728,23 @@ class BattleshipsForeverGame {
                 rotationSpeed: (Math.random() - 0.5) * 0.02,
                 type: type.type,
                 parallax: 0.3 + Math.random() * 0.3 // Parallax factor for depth
-            });
+            };
+            
+            // Pre-calculate asteroid shape to avoid flickering
+            if (doodad.type.startsWith('asteroid')) {
+                const sides = 6 + Math.floor(Math.random() * 2);
+                doodad.vertices = [];
+                for (let j = 0; j < sides; j++) {
+                    const angle = (j / sides) * Math.PI * 2;
+                    const radius = doodad.size * (0.8 + Math.random() * 0.4);
+                    doodad.vertices.push({
+                        x: Math.cos(angle) * radius,
+                        y: Math.sin(angle) * radius
+                    });
+                }
+            }
+            
+            this.doodads.push(doodad);
         }
     }
     
@@ -1290,7 +1307,8 @@ class BattleshipsForeverGame {
                 const targetCameraX = avgX / count - this.canvas.width / 2;
                 const targetCameraY = avgY / count - this.canvas.height / 2;
                 // Use interpolation setting and scroll speed
-                const smoothFactor = this.displaySettings.interpolation ? 0.05 * (this.displaySettings.scrollSpeed / 20) : 1.0;
+                const smoothFactor = this.displaySettings.interpolation ? 
+                    0.05 * (this.displaySettings.scrollSpeed / DEFAULT_SCROLL_SPEED) : 1.0;
                 this.camera.x += (targetCameraX - this.camera.x) * smoothFactor;
                 this.camera.y += (targetCameraY - this.camera.y) * smoothFactor;
             }
@@ -1366,19 +1384,14 @@ class BattleshipsForeverGame {
                     this.ctx.rotate(doodad.rotation);
                     
                     // Draw based on type
-                    if (doodad.type.startsWith('asteroid')) {
-                        // Draw asteroid as irregular polygon
+                    if (doodad.type.startsWith('asteroid') && doodad.vertices) {
+                        // Draw asteroid using pre-calculated vertices
                         this.ctx.fillStyle = doodad.color;
                         this.ctx.beginPath();
-                        const sides = 6 + Math.floor(Math.random() * 2);
-                        for (let i = 0; i < sides; i++) {
-                            const angle = (i / sides) * Math.PI * 2;
-                            const radius = doodad.size * (0.8 + Math.random() * 0.4);
-                            const x = Math.cos(angle) * radius;
-                            const y = Math.sin(angle) * radius;
-                            if (i === 0) this.ctx.moveTo(x, y);
-                            else this.ctx.lineTo(x, y);
-                        }
+                        doodad.vertices.forEach((vertex, i) => {
+                            if (i === 0) this.ctx.moveTo(vertex.x, vertex.y);
+                            else this.ctx.lineTo(vertex.x, vertex.y);
+                        });
                         this.ctx.closePath();
                         this.ctx.fill();
                         
