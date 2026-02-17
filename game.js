@@ -680,6 +680,8 @@ class BattleshipsForeverGame {
         document.getElementById('mainMenu').classList.remove('hidden');
         document.getElementById('ui').style.display = 'none';
         document.getElementById('instructions').style.display = 'none';
+        document.getElementById('gameOverScreen').style.display = 'none';
+        document.getElementById('pauseMenu').classList.remove('active');
         this.audio.playMusic('Thememusic.ogg');
     }
     
@@ -689,6 +691,7 @@ class BattleshipsForeverGame {
         this.paused = false;
         this.gameMode = mode;
         document.getElementById('mainMenu').classList.add('hidden');
+        document.getElementById('gameOverScreen').style.display = 'none';
         document.getElementById('ui').style.display = 'flex';
         document.getElementById('instructions').style.display = 'block';
         this.audio.playMusic('Combatmusic.ogg');
@@ -754,10 +757,17 @@ class BattleshipsForeverGame {
         if (enemyCount === 0 && this.enemiesRemaining > 0) {
             // Wave complete
             this.waveActive = false;
-            this.score += this.wave * 100;
+            const bonus = this.wave * 100;
+            this.score += bonus;
+            
+            // Show wave complete message
+            document.getElementById('waveBonus').textContent = bonus;
+            const waveCompleteEl = document.getElementById('waveComplete');
+            waveCompleteEl.style.display = 'block';
             
             // Wait 3 seconds before next wave
             setTimeout(() => {
+                waveCompleteEl.style.display = 'none';
                 if (this.gameMode === 'skirmish' && this.inGame) {
                     this.nextWave();
                 }
@@ -774,8 +784,15 @@ class BattleshipsForeverGame {
     gameOver() {
         this.inGame = false;
         this.paused = true;
-        alert(`Game Over! Wave: ${this.wave}, Score: ${this.score}`);
-        this.showMainMenu();
+        
+        // Show game over screen
+        document.getElementById('finalWave').textContent = this.wave;
+        document.getElementById('finalScore').textContent = this.score;
+        document.getElementById('gameOverScreen').style.display = 'block';
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('instructions').style.display = 'none';
+        
+        this.audio.stopMusic();
     }
     
     showOptions() {
