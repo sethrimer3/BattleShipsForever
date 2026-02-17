@@ -210,6 +210,33 @@
             transform: scale(1.05);
         }
         
+        /* Game Mode Selection Menu */
+        #gameModeMenu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        #gameModeMenu.active {
+            display: flex;
+        }
+        
+        #gameModeMenu h3 {
+            font-size: 32px;
+            color: #00ff00;
+            text-shadow: 0 0 15px #00ff00;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+        }
+        
         /* Options Menu */
         #optionsMenu {
             position: absolute;
@@ -362,13 +389,34 @@
         <h1>BATTLESHIPS FOREVER</h1>
         <h2>HTML5 Edition</h2>
         <button class="menu-btn" onclick="game.startGame('sandbox')">SANDBOX MODE</button>
-        <button class="menu-btn" onclick="game.startGame('skirmish')">SKIRMISH MODE</button>
+        <button class="menu-btn" onclick="game.showGameModeMenu()">SKIRMISH MODES</button>
         <button class="menu-btn" onclick="game.showOptions()">OPTIONS</button>
         <button class="menu-btn" onclick="window.open('https://github.com/sethrimer3/BattleShipsForever', '_blank')">ABOUT</button>
         <p style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #00ff00; font-size: 12px; text-align: center; opacity: 0.7;">
             Original Game by Sean "th15" Chan © 2007-2009<br>
             HTML5 Adaptation - Community Project
         </p>
+    </div>
+    
+    <!-- Game Mode Selection Menu -->
+    <div id="gameModeMenu">
+        <h3>SELECT SKIRMISH MODE</h3>
+        <div style="margin: 20px 0; padding: 15px; border: 1px solid #004400; text-align: left; font-size: 14px; line-height: 1.6;">
+            <p style="margin-bottom: 15px; color: #00ff00; font-weight: bold;">Choose your battle:</p>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #0ff;">SKIRMISH:</strong> Progressive wave-based combat. Defeat each wave to advance!
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #0ff;">GRINDER:</strong> Endless survival mode. How long can you last?
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #0ff;">BLOCKADE:</strong> Defend your position! Enemies attack from the right.
+            </div>
+        </div>
+        <button class="menu-btn" onclick="game.startGame('skirmish')">SKIRMISH</button>
+        <button class="menu-btn" onclick="game.startGame('grinder')">GRINDER</button>
+        <button class="menu-btn" onclick="game.startGame('blockade')">BLOCKADE</button>
+        <button class="menu-btn" onclick="game.hideGameModeMenu()" style="margin-top: 20px;">BACK</button>
     </div>
     
     <!-- Options Menu -->
@@ -457,9 +505,9 @@
     <div id="gameOverScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 102;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
             <h1 style="color: #ff0000; font-size: 64px; text-shadow: 0 0 30px #ff0000; margin-bottom: 20px;">GAME OVER</h1>
-            <p style="color: #00ff00; font-size: 32px; margin: 10px 0;">Wave Reached: <span id="finalWave">0</span></p>
+            <p style="color: #00ff00; font-size: 32px; margin: 10px 0;"><span id="waveLabel">Wave Reached:</span> <span id="finalWave">0</span></p>
             <p style="color: #00ff00; font-size: 32px; margin: 10px 0;">Final Score: <span id="finalScore">0</span></p>
-            <button class="menu-btn" onclick="game.startGame('skirmish')" style="margin-top: 30px;">TRY AGAIN</button>
+            <button class="menu-btn" onclick="game.showGameModeMenu()" style="margin-top: 30px;">TRY AGAIN</button>
             <button class="menu-btn" onclick="game.returnToMainMenu()">MAIN MENU</button>
             <p style="color: #888; font-size: 14px; margin-top: 20px;">Press ESC to return to main menu</p>
         </div>
