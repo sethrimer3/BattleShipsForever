@@ -854,17 +854,13 @@ class BattleshipsForeverGame {
         const titleHeading = announcement.querySelector('h1');
         const prepareText = announcement.querySelector('p');
         
-        // Store original content
-        const originalTitle = titleHeading.innerHTML;
+        // Store original content as strings
+        const originalTitle = titleHeading.textContent;
         const originalSubtitle = prepareText.textContent;
         
-        // Create temporary text node for mode name
-        const modeTextNode = document.createTextNode('GRINDER MODE');
-        const waveTextNode = titleHeading.firstChild; // "WAVE " text node
-        
-        // Temporarily replace content
-        titleHeading.replaceChild(modeTextNode, waveTextNode);
+        // Temporarily update content
         waveNumberSpan.style.display = 'none';
+        titleHeading.textContent = 'GRINDER MODE';
         prepareText.textContent = 'SURVIVE AS LONG AS YOU CAN';
         announcement.style.display = 'block';
         announcement.style.animation = 'fadeInOut 3s ease-in-out';
@@ -873,7 +869,7 @@ class BattleshipsForeverGame {
             announcement.style.display = 'none';
             announcement.style.animation = '';
             // Restore original content
-            titleHeading.replaceChild(waveTextNode, modeTextNode);
+            titleHeading.textContent = originalTitle;
             waveNumberSpan.style.display = '';
             prepareText.textContent = originalSubtitle;
         }, 3000);
@@ -904,6 +900,7 @@ class BattleshipsForeverGame {
                 const factions = ['enemy', 'pirate', 'alien', 'razor'];
                 const faction = factions[Math.floor(Math.random() * factions.length)];
                 this.spawnEnemyShip(faction);
+                this.enemiesRemaining++; // Track spawned enemies for kill counting
             }
         }, GRINDER_SPAWN_INTERVAL_MS);
         
