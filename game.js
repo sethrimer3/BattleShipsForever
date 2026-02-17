@@ -333,7 +333,6 @@ class Ship {
             if (distance < settings.fireDistance && Math.abs(angleDiff) < settings.aimAccuracy) {
                 this.fireWeapons(projectiles, Date.now(), audio);
             }
-            }
             
             // Move towards enemy if too far
             if (distance > 300) {
