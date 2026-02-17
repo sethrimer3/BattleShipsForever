@@ -235,10 +235,25 @@ class Ship {
                 secondary: 'rgb(255, 64, 64)',
                 tertiary: 'rgb(155, 45, 45)'
             },
+            pirate: {  // Same as enemy, alias for clarity
+                primary: 'rgb(255, 0, 0)',
+                secondary: 'rgb(255, 64, 64)',
+                tertiary: 'rgb(155, 45, 45)'
+            },
             alien: {
                 primary: 'rgb(255, 0, 255)',  // Magenta
                 secondary: 'rgb(128, 0, 255)',
                 tertiary: 'rgb(255, 128, 255)'
+            },
+            allied: {
+                primary: 'rgb(0, 255, 255)',  // Cyan/Yellow
+                secondary: 'rgb(64, 128, 128)',
+                tertiary: 'rgb(128, 196, 196)'
+            },
+            razor: {  // Razor Aliens - White
+                primary: 'rgb(255, 255, 255)',
+                secondary: 'rgb(255, 255, 255)',
+                tertiary: 'rgb(255, 255, 255)'
             }
         };
         
@@ -250,6 +265,11 @@ class Ship {
     }
     
     addSection(section) {
+        // Apply team colors to core sections
+        if (section.type === 'core') {
+            const teamColor = this.teamColors[this.team] || this.teamColors.player;
+            section.color = teamColor.primary;
+        }
         this.sections.push(section);
         this.updateProperties();
     }
@@ -543,7 +563,8 @@ class Ship {
         
         // Selection indicator
         if (this.selected) {
-            ctx.strokeStyle = this.team === 'player' ? '#00ff00' : '#ff0000';
+            const teamColor = this.teamColors[this.team] || this.teamColors.player;
+            ctx.strokeStyle = teamColor.primary;
             ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
             const size = Math.max(...this.sections.map(s => 
@@ -874,7 +895,7 @@ class BattleshipsForeverGame {
         this.updateUI();
     }
     
-    spawnEnemyShip() {
+    spawnEnemyShip(team = 'enemy') {
         this.audio.playSound('deploy');
         
         const angle = Math.random() * Math.PI * 2;
@@ -883,13 +904,22 @@ class BattleshipsForeverGame {
         const ship = new Ship(
             this.canvas.width / 2 + this.camera.x + Math.cos(angle) * distance,
             this.canvas.height / 2 + this.camera.y + Math.sin(angle) * distance,
-            'enemy'
+            team
         );
         
-        // Enemy ship configuration
-        ship.addSection(new ShipSection('laser', 'medium', 25, 0));
-        ship.addSection(new ShipSection('laser', 'medium', -25, 0));
-        ship.addSection(new ShipSection('missile', 'medium', 0, 25));
+        // Enemy ship configuration varies by faction
+        const weaponConfigs = {
+            enemy: ['laser', 'laser', 'missile'],
+            pirate: ['cannon', 'cannon', 'railgun'],
+            alien: ['laser', 'missile', 'missile'],
+            razor: ['railgun', 'railgun', 'laser'],
+            allied: ['cannon', 'laser', 'missile']
+        };
+        
+        const weapons = weaponConfigs[team] || weaponConfigs.enemy;
+        ship.addSection(new ShipSection(weapons[0], 'medium', 25, 0));
+        ship.addSection(new ShipSection(weapons[1], 'medium', -25, 0));
+        ship.addSection(new ShipSection(weapons[2], 'medium', 0, 25));
         ship.addSection(new ShipSection('engine', 'medium', 0, -25));
         
         this.ships.push(ship);

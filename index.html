@@ -281,6 +281,15 @@
             margin-bottom: 30px;
             font-size: 32px;
         }
+        
+        /* Faction Menu Dropdown */
+        #factionMenu {
+            display: none;
+        }
+        
+        #factionMenu.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -288,7 +297,15 @@
         <div id="controls">
             <button class="btn" onclick="game.toggleShipBuilder()">Ship Builder</button>
             <button class="btn" onclick="game.spawnPlayerShip()">Deploy Ship</button>
-            <button class="btn" onclick="game.spawnEnemyShip()">Spawn Enemy</button>
+            <div style="display: inline-block; position: relative;">
+                <button class="btn" onclick="this.nextElementSibling.classList.toggle('active')">Spawn Faction ▼</button>
+                <div id="factionMenu" style="position: absolute; top: 100%; left: 0; background: rgba(0, 0, 0, 0.95); border: 1px solid #00ff00; z-index: 50; min-width: 150px;">
+                    <button class="btn" onclick="game.spawnEnemyShip('enemy'); document.getElementById('factionMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400; color: #ff0000;">Pirate</button>
+                    <button class="btn" onclick="game.spawnEnemyShip('alien'); document.getElementById('factionMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400; color: #ff00ff;">Alien</button>
+                    <button class="btn" onclick="game.spawnEnemyShip('razor'); document.getElementById('factionMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400; color: #ffffff;">Razor</button>
+                    <button class="btn" onclick="game.spawnEnemyShip('allied'); document.getElementById('factionMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; color: #00ffff;">Allied</button>
+                </div>
+            </div>
             <button class="btn" onclick="game.reset()">Reset</button>
         </div>
         <div id="info">
