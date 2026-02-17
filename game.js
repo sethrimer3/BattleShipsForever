@@ -1,6 +1,11 @@
 // Battleships Forever - HTML5 Space RTS Edition
 // A web-based recreation inspired by the original Battleships Forever
 
+// Game constants
+const SCREEN_SHAKE_INTENSITY = 0.05;
+const MAX_SCREEN_SHAKE = 10;
+const SCREEN_SHAKE_DECAY = 0.9;
+
 // Audio System
 class AudioManager {
     constructor() {
@@ -235,11 +240,6 @@ class Ship {
                 secondary: 'rgb(255, 64, 64)',
                 tertiary: 'rgb(155, 45, 45)'
             },
-            pirate: {  // Same as enemy, alias for clarity
-                primary: 'rgb(255, 0, 0)',
-                secondary: 'rgb(255, 64, 64)',
-                tertiary: 'rgb(155, 45, 45)'
-            },
             alien: {
                 primary: 'rgb(255, 0, 255)',  // Magenta
                 secondary: 'rgb(128, 0, 255)',
@@ -256,6 +256,9 @@ class Ship {
                 tertiary: 'rgb(255, 255, 255)'
             }
         };
+        
+        // Pirate is an alias for enemy faction
+        this.teamColors.pirate = this.teamColors.enemy;
         
         // Add a default core section
         this.addSection(new ShipSection('core', 'medium', 0, 0));
@@ -754,9 +757,11 @@ class BattleshipsForeverGame {
         // Count remaining enemies
         const enemyCount = this.ships.filter(s => s.alive && s.team !== 'player').length;
         
+        // Check if all enemies are defeated
         if (enemyCount === 0 && this.enemiesRemaining > 0) {
             // Wave complete
             this.waveActive = false;
+            this.enemiesRemaining = 0; // Reset for next wave
             const bonus = this.wave * 100;
             this.score += bonus;
             
@@ -1154,7 +1159,7 @@ class BattleshipsForeverGame {
                     ship.takeDamage(proj.damage, this.audio);
                     
                     // Add screen shake on impact
-                    this.screenShake = Math.min(this.screenShake + proj.damage * 0.05, 10);
+                    this.screenShake = Math.min(this.screenShake + proj.damage * SCREEN_SHAKE_INTENSITY, MAX_SCREEN_SHAKE);
                     
                     // Create enhanced explosion particles
                     const particleCount = proj.damage > 30 ? 20 : 15; // More particles for high damage
@@ -1218,7 +1223,7 @@ class BattleshipsForeverGame {
         if (this.screenShake > 0) {
             this.camera.x += (Math.random() - 0.5) * this.screenShake;
             this.camera.y += (Math.random() - 0.5) * this.screenShake;
-            this.screenShake *= 0.9; // Decay shake
+            this.screenShake *= SCREEN_SHAKE_DECAY;
             if (this.screenShake < 0.1) this.screenShake = 0;
         }
         
