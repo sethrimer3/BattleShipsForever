@@ -858,9 +858,13 @@ class BattleshipsForeverGame {
         const originalTitle = titleHeading.innerHTML;
         const originalSubtitle = prepareText.textContent;
         
-        // Temporarily hide wave number and update text
+        // Create temporary text node for mode name
+        const modeTextNode = document.createTextNode('GRINDER MODE');
+        const waveTextNode = titleHeading.firstChild; // "WAVE " text node
+        
+        // Temporarily replace content
+        titleHeading.replaceChild(modeTextNode, waveTextNode);
         waveNumberSpan.style.display = 'none';
-        titleHeading.childNodes[0].textContent = 'GRINDER MODE';
         prepareText.textContent = 'SURVIVE AS LONG AS YOU CAN';
         announcement.style.display = 'block';
         announcement.style.animation = 'fadeInOut 3s ease-in-out';
@@ -869,9 +873,9 @@ class BattleshipsForeverGame {
             announcement.style.display = 'none';
             announcement.style.animation = '';
             // Restore original content
-            titleHeading.innerHTML = originalTitle;
-            prepareText.textContent = originalSubtitle;
+            titleHeading.replaceChild(waveTextNode, modeTextNode);
             waveNumberSpan.style.display = '';
+            prepareText.textContent = originalSubtitle;
         }, 3000);
         
         // Spawn player ship
@@ -889,11 +893,17 @@ class BattleshipsForeverGame {
         // Start continuous spawning
         this.grinderSpawnInterval = setInterval(() => {
             if (this.inGame && !this.paused && this.gameMode === 'grinder') {
+                // Check if player is still alive before spawning
+                const playerAlive = this.ships.some(s => s.alive && s.team === 'player');
+                if (!playerAlive) {
+                    clearInterval(this.grinderSpawnInterval);
+                    this.grinderSpawnInterval = null;
+                    return;
+                }
+                
                 const factions = ['enemy', 'pirate', 'alien', 'razor'];
                 const faction = factions[Math.floor(Math.random() * factions.length)];
                 this.spawnEnemyShip(faction);
-                // Increase difficulty over time
-                this.wave = Math.floor(this.survivalTime / GRINDER_WAVE_PROGRESSION_SECONDS) + 1;
             }
         }, GRINDER_SPAWN_INTERVAL_MS);
         
@@ -1047,9 +1057,7 @@ class BattleshipsForeverGame {
         
         // Show game over screen with mode-specific stats
         if (this.gameMode === 'grinder') {
-            const minutes = Math.floor(this.survivalTime / 60);
-            const seconds = Math.floor(this.survivalTime % 60);
-            document.getElementById('finalWave').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('finalWave').textContent = this.formatTime(this.survivalTime);
             document.getElementById('waveLabel').textContent = 'Survival Time:';
             document.getElementById('finalScore').textContent = `${this.score} (${this.enemiesDefeated} kills)`;
         } else {
@@ -1131,6 +1139,12 @@ class BattleshipsForeverGame {
     setScrollSpeed(value) {
         this.displaySettings.scrollSpeed = parseInt(value);
         document.getElementById('scrollSpeedValue').textContent = value;
+    }
+    
+    formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
     }
     
     showWaveAnnouncement(waveNum) {
@@ -1652,6 +1666,9 @@ class BattleshipsForeverGame {
             // Track survival time in grinder mode
             this.survivalTime += dt;
             
+            // Update wave/difficulty based on survival time
+            this.wave = Math.floor(this.survivalTime / GRINDER_WAVE_PROGRESSION_SECONDS) + 1;
+            
             // Track enemy kills for scoring
             const currentEnemyCount = this.ships.filter(s => s.alive && s.team !== 'player').length;
             if (currentEnemyCount < this.enemiesRemaining) {
@@ -2053,9 +2070,7 @@ class BattleshipsForeverGame {
         } else if (this.gameMode === 'skirmish') {
             modeText = `Skirmish | Wave: ${this.wave} | Score: ${this.score}`;
         } else if (this.gameMode === 'grinder') {
-            const minutes = Math.floor(this.survivalTime / 60);
-            const seconds = Math.floor(this.survivalTime % 60);
-            modeText = `Grinder | Time: ${minutes}:${seconds.toString().padStart(2, '0')} | Kills: ${this.enemiesDefeated} | Score: ${this.score}`;
+            modeText = `Grinder | Time: ${this.formatTime(this.survivalTime)} | Kills: ${this.enemiesDefeated} | Score: ${this.score}`;
         } else if (this.gameMode === 'blockade') {
             modeText = `Blockade | Wave: ${this.wave} | Score: ${this.score}`;
         }

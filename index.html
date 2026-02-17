@@ -298,6 +298,29 @@
             font-family: 'Courier New', monospace;
         }
         
+        .mode-description-box {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #004400;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .mode-description-box p {
+            margin-bottom: 15px;
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        .mode-description-item {
+            margin-bottom: 10px;
+        }
+        
+        .mode-description-item strong {
+            color: #0ff;
+        }
+        
         /* Options Menu */
         #optionsMenu {
             position: absolute;
@@ -462,16 +485,16 @@
     <!-- Game Mode Selection Menu -->
     <div id="gameModeMenu">
         <h3>SELECT SKIRMISH MODE</h3>
-        <div style="margin: 20px 0; padding: 15px; border: 1px solid #004400; text-align: left; font-size: 14px; line-height: 1.6;">
-            <p style="margin-bottom: 15px; color: #00ff00; font-weight: bold;">Choose your battle:</p>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: #0ff;">SKIRMISH:</strong> Progressive wave-based combat. Defeat each wave to advance!
+        <div class="mode-description-box">
+            <p>Choose your battle:</p>
+            <div class="mode-description-item">
+                <strong>SKIRMISH:</strong> Progressive wave-based combat. Defeat each wave to advance!
             </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: #0ff;">GRINDER:</strong> Endless survival mode. How long can you last?
+            <div class="mode-description-item">
+                <strong>GRINDER:</strong> Endless survival mode. How long can you last?
             </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: #0ff;">BLOCKADE:</strong> Defend your position! Enemies attack from the right.
+            <div class="mode-description-item">
+                <strong>BLOCKADE:</strong> Defend your position! Enemies attack from the right.
             </div>
         </div>
         <button class="menu-btn" onclick="game.startGame('skirmish')">SKIRMISH</button>
