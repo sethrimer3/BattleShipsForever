@@ -281,6 +281,22 @@
             margin-bottom: 30px;
             font-size: 32px;
         }
+        
+        /* Faction Menu Dropdown */
+        #factionMenu {
+            display: none;
+        }
+        
+        #factionMenu.active {
+            display: block;
+        }
+        
+        /* Animation for wave complete */
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -288,7 +304,15 @@
         <div id="controls">
             <button class="btn" onclick="game.toggleShipBuilder()">Ship Builder</button>
             <button class="btn" onclick="game.spawnPlayerShip()">Deploy Ship</button>
-            <button class="btn" onclick="game.spawnEnemyShip()">Spawn Enemy</button>
+            <div style="display: inline-block; position: relative;">
+                <button class="btn" onclick="this.nextElementSibling.classList.toggle('active')">Spawn Faction ▼</button>
+                <div id="factionMenu" style="position: absolute; top: 100%; left: 0; background: rgba(0, 0, 0, 0.95); border: 1px solid #00ff00; z-index: 50; min-width: 150px;">
+                    <button class="btn" onclick="game.spawnEnemyShip('enemy'); document.getElementById('factionMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400; color: #ff0000;">Pirate</button>
+                    <button class="btn" onclick="game.spawnEnemyShip('alien'); document.getElementById('factionMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400; color: #ff00ff;">Alien</button>
+                    <button class="btn" onclick="game.spawnEnemyShip('razor'); document.getElementById('factionMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400; color: #ffffff;">Razor</button>
+                    <button class="btn" onclick="game.spawnEnemyShip('allied'); document.getElementById('factionMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; color: #00ffff;">Allied</button>
+                </div>
+            </div>
             <button class="btn" onclick="game.reset()">Reset</button>
         </div>
         <div id="info">
@@ -337,7 +361,8 @@
     <div id="mainMenu">
         <h1>BATTLESHIPS FOREVER</h1>
         <h2>HTML5 Edition</h2>
-        <button class="menu-btn" onclick="game.startGame()">START GAME</button>
+        <button class="menu-btn" onclick="game.startGame('sandbox')">SANDBOX MODE</button>
+        <button class="menu-btn" onclick="game.startGame('skirmish')">SKIRMISH MODE</button>
         <button class="menu-btn" onclick="game.showOptions()">OPTIONS</button>
         <button class="menu-btn" onclick="window.open('https://github.com/sethrimer3/BattleShipsForever', '_blank')">ABOUT</button>
     </div>
@@ -378,6 +403,23 @@
         <button class="menu-btn" onclick="game.resumeGame()">RESUME</button>
         <button class="menu-btn" onclick="game.showOptions()">OPTIONS</button>
         <button class="menu-btn" onclick="game.returnToMainMenu()">MAIN MENU</button>
+    </div>
+    
+    <!-- Wave Complete Overlay -->
+    <div id="waveComplete" style="display: none; position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 50; pointer-events: none;">
+        <h1 style="color: #00ff00; font-size: 48px; text-shadow: 0 0 20px #00ff00; animation: pulse 0.5s ease-in-out;">WAVE COMPLETE</h1>
+        <p style="color: #00ff00; font-size: 24px; margin-top: 10px;">+<span id="waveBonus">0</span> POINTS</p>
+    </div>
+    
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 102;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+            <h1 style="color: #ff0000; font-size: 64px; text-shadow: 0 0 30px #ff0000; margin-bottom: 20px;">GAME OVER</h1>
+            <p style="color: #00ff00; font-size: 32px; margin: 10px 0;">Wave Reached: <span id="finalWave">0</span></p>
+            <p style="color: #00ff00; font-size: 32px; margin: 10px 0;">Final Score: <span id="finalScore">0</span></p>
+            <button class="menu-btn" onclick="game.startGame('skirmish')" style="margin-top: 30px;">TRY AGAIN</button>
+            <button class="menu-btn" onclick="game.returnToMainMenu()">MAIN MENU</button>
+        </div>
     </div>
     
     <div id="instructions">

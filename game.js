@@ -1,6 +1,11 @@
 // Battleships Forever - HTML5 Space RTS Edition
 // A web-based recreation inspired by the original Battleships Forever
 
+// Game constants
+const SCREEN_SHAKE_INTENSITY = 0.05;
+const MAX_SCREEN_SHAKE = 10;
+const SCREEN_SHAKE_DECAY = 0.9;
+
 // Audio System
 class AudioManager {
     constructor() {
@@ -239,8 +244,21 @@ class Ship {
                 primary: 'rgb(255, 0, 255)',  // Magenta
                 secondary: 'rgb(128, 0, 255)',
                 tertiary: 'rgb(255, 128, 255)'
+            },
+            allied: {
+                primary: 'rgb(0, 255, 255)',  // Cyan/Yellow
+                secondary: 'rgb(64, 128, 128)',
+                tertiary: 'rgb(128, 196, 196)'
+            },
+            razor: {  // Razor Aliens - White
+                primary: 'rgb(255, 255, 255)',
+                secondary: 'rgb(255, 255, 255)',
+                tertiary: 'rgb(255, 255, 255)'
             }
         };
+        
+        // Pirate is an alias for enemy faction
+        this.teamColors.pirate = this.teamColors.enemy;
         
         // Add a default core section
         this.addSection(new ShipSection('core', 'medium', 0, 0));
@@ -250,6 +268,11 @@ class Ship {
     }
     
     addSection(section) {
+        // Apply team colors to core sections
+        if (section.type === 'core') {
+            const teamColor = this.teamColors[this.team] || this.teamColors.player;
+            section.color = teamColor.primary;
+        }
         this.sections.push(section);
         this.updateProperties();
     }
@@ -424,9 +447,11 @@ class Ship {
             const index = this.sections.indexOf(section);
             this.sections.splice(index, 1);
             
-            // Play explosion sound
+            // Play explosion sound (randomize for variety)
             if (audio) {
-                audio.playSound('explosion');
+                const explosionSounds = ['explosion', 'explosion1', 'explosion2', 'explosion3'];
+                const randomSound = explosionSounds[Math.floor(Math.random() * explosionSounds.length)];
+                audio.playSound(randomSound);
             }
             
             // If core is destroyed or no sections left, ship is destroyed
@@ -543,7 +568,8 @@ class Ship {
         
         // Selection indicator
         if (this.selected) {
-            ctx.strokeStyle = this.team === 'player' ? '#00ff00' : '#ff0000';
+            const teamColor = this.teamColors[this.team] || this.teamColors.player;
+            ctx.strokeStyle = teamColor.primary;
             ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
             const size = Math.max(...this.sections.map(s => 
@@ -626,6 +652,16 @@ class BattleshipsForeverGame {
         this.paused = false;
         this.inGame = false;
         this.difficulty = 'normal';
+        this.gameMode = 'sandbox'; // sandbox, skirmish
+        
+        // Skirmish mode state
+        this.wave = 0;
+        this.enemiesRemaining = 0;
+        this.score = 0;
+        this.waveActive = false;
+        
+        // Screen effects
+        this.screenShake = 0;
         
         // Initialize audio manager
         this.audio = new AudioManager();
@@ -647,17 +683,121 @@ class BattleshipsForeverGame {
         document.getElementById('mainMenu').classList.remove('hidden');
         document.getElementById('ui').style.display = 'none';
         document.getElementById('instructions').style.display = 'none';
+        document.getElementById('gameOverScreen').style.display = 'none';
+        document.getElementById('pauseMenu').classList.remove('active');
         this.audio.playMusic('Thememusic.ogg');
     }
     
-    startGame() {
+    startGame(mode = 'sandbox') {
         this.audio.playSound('buttonClick');
         this.inGame = true;
         this.paused = false;
+        this.gameMode = mode;
         document.getElementById('mainMenu').classList.add('hidden');
+        document.getElementById('gameOverScreen').style.display = 'none';
         document.getElementById('ui').style.display = 'flex';
         document.getElementById('instructions').style.display = 'block';
         this.audio.playMusic('Combatmusic.ogg');
+        
+        // Initialize game mode
+        if (mode === 'skirmish') {
+            this.startSkirmish();
+        }
+    }
+    
+    startSkirmish() {
+        // Reset skirmish state
+        this.wave = 0;
+        this.score = 0;
+        this.enemiesRemaining = 0;
+        this.waveActive = false;
+        this.ships = [];
+        this.projectiles = [];
+        this.particles = [];
+        
+        // Spawn player ship
+        const playerShip = new Ship(
+            this.canvas.width / 2 + this.camera.x,
+            this.canvas.height / 2 + this.camera.y,
+            'player'
+        );
+        playerShip.addSection(new ShipSection('cannon', 'medium', 30, 0));
+        playerShip.addSection(new ShipSection('cannon', 'medium', -30, 0));
+        playerShip.addSection(new ShipSection('laser', 'medium', 0, 30));
+        playerShip.addSection(new ShipSection('engine', 'medium', 0, -30));
+        this.ships.push(playerShip);
+        
+        // Start first wave
+        this.nextWave();
+        this.updateUI();
+    }
+    
+    nextWave() {
+        this.wave++;
+        this.waveActive = true;
+        
+        // Spawn enemies based on wave number
+        const enemyCount = Math.min(2 + this.wave, 10);
+        const factions = ['enemy', 'pirate', 'alien', 'razor'];
+        
+        for (let i = 0; i < enemyCount; i++) {
+            setTimeout(() => {
+                const faction = factions[Math.floor(Math.random() * factions.length)];
+                this.spawnEnemyShip(faction);
+                this.enemiesRemaining++;
+            }, i * 1000); // Spawn one enemy per second
+        }
+        
+        this.audio.playSound('deploy');
+    }
+    
+    checkSkirmishWave() {
+        if (this.gameMode !== 'skirmish' || !this.waveActive) return;
+        
+        // Count remaining enemies
+        const enemyCount = this.ships.filter(s => s.alive && s.team !== 'player').length;
+        
+        // Check if all enemies are defeated
+        if (enemyCount === 0 && this.enemiesRemaining > 0) {
+            // Wave complete
+            this.waveActive = false;
+            this.enemiesRemaining = 0; // Reset for next wave
+            const bonus = this.wave * 100;
+            this.score += bonus;
+            
+            // Show wave complete message
+            document.getElementById('waveBonus').textContent = bonus;
+            const waveCompleteEl = document.getElementById('waveComplete');
+            waveCompleteEl.style.display = 'block';
+            
+            // Wait 3 seconds before next wave
+            setTimeout(() => {
+                waveCompleteEl.style.display = 'none';
+                if (this.gameMode === 'skirmish' && this.inGame) {
+                    this.nextWave();
+                }
+            }, 3000);
+        }
+        
+        // Check if player is dead
+        const playerAlive = this.ships.some(s => s.alive && s.team === 'player');
+        if (!playerAlive) {
+            this.gameOver();
+        }
+    }
+    
+    gameOver() {
+        this.inGame = false;
+        this.paused = true;
+        
+        // Show game over screen
+        document.getElementById('finalWave').textContent = this.wave;
+        document.getElementById('finalScore').textContent = this.score;
+        document.getElementById('gameOverScreen').style.display = 'block';
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('instructions').style.display = 'none';
+        
+        this.audio.stopMusic();
     }
     
     showOptions() {
@@ -705,12 +845,19 @@ class BattleshipsForeverGame {
     }
     
     loadAudio() {
-        // Load sound effects
+        // Load weapon firing sound effects
         this.audio.loadSound('cannon', 'ORIGINAL/Sounds/snd_Blaster.wav');
         this.audio.loadSound('laser', 'ORIGINAL/Sounds/snd_BeamFire1.wav');
-        this.audio.loadSound('missile', 'ORIGINAL/Sounds/snd_Driver.wav');
+        this.audio.loadSound('missile', 'ORIGINAL/Sounds/snd_MissileLaunch.wav');
         this.audio.loadSound('railgun', 'ORIGINAL/Sounds/snd_Dieterling.wav');
+        
+        // Load explosion sound effects
         this.audio.loadSound('explosion', 'ORIGINAL/Sounds/snd_ExpShockwave.wav');
+        this.audio.loadSound('explosion1', 'ORIGINAL/Sounds/snd_FlashBoltExplode.wav');
+        this.audio.loadSound('explosion2', 'ORIGINAL/Sounds/snd_FlashBoltExplode2.wav');
+        this.audio.loadSound('explosion3', 'ORIGINAL/Sounds/snd_RAShellExplode.wav');
+        
+        // Load UI sound effects
         this.audio.loadSound('buttonClick', 'ORIGINAL/Sounds/snd_ClickButton.wav');
         this.audio.loadSound('selectShip', 'ORIGINAL/Sounds/snd_ChooseShip.wav');
         this.audio.loadSound('deploy', 'ORIGINAL/Sounds/snd_DeployPlatform.wav');
@@ -874,7 +1021,7 @@ class BattleshipsForeverGame {
         this.updateUI();
     }
     
-    spawnEnemyShip() {
+    spawnEnemyShip(team = 'enemy') {
         this.audio.playSound('deploy');
         
         const angle = Math.random() * Math.PI * 2;
@@ -883,13 +1030,22 @@ class BattleshipsForeverGame {
         const ship = new Ship(
             this.canvas.width / 2 + this.camera.x + Math.cos(angle) * distance,
             this.canvas.height / 2 + this.camera.y + Math.sin(angle) * distance,
-            'enemy'
+            team
         );
         
-        // Enemy ship configuration
-        ship.addSection(new ShipSection('laser', 'medium', 25, 0));
-        ship.addSection(new ShipSection('laser', 'medium', -25, 0));
-        ship.addSection(new ShipSection('missile', 'medium', 0, 25));
+        // Enemy ship configuration varies by faction
+        const weaponConfigs = {
+            enemy: ['laser', 'laser', 'missile'],
+            pirate: ['cannon', 'cannon', 'railgun'],
+            alien: ['laser', 'missile', 'missile'],
+            razor: ['railgun', 'railgun', 'laser'],
+            allied: ['cannon', 'laser', 'missile']
+        };
+        
+        const weapons = weaponConfigs[team] || weaponConfigs.enemy;
+        ship.addSection(new ShipSection(weapons[0], 'medium', 25, 0));
+        ship.addSection(new ShipSection(weapons[1], 'medium', -25, 0));
+        ship.addSection(new ShipSection(weapons[2], 'medium', 0, 25));
         ship.addSection(new ShipSection('engine', 'medium', 0, -25));
         
         this.ships.push(ship);
@@ -1002,6 +1158,9 @@ class BattleshipsForeverGame {
                 if (dist < 30) {
                     ship.takeDamage(proj.damage, this.audio);
                     
+                    // Add screen shake on impact
+                    this.screenShake = Math.min(this.screenShake + proj.damage * SCREEN_SHAKE_INTENSITY, MAX_SCREEN_SHAKE);
+                    
                     // Create enhanced explosion particles
                     const particleCount = proj.damage > 30 ? 20 : 15; // More particles for high damage
                     for (let i = 0; i < particleCount; i++) {
@@ -1060,8 +1219,21 @@ class BattleshipsForeverGame {
             }
         }
         
+        // Apply and decay screen shake
+        if (this.screenShake > 0) {
+            this.camera.x += (Math.random() - 0.5) * this.screenShake;
+            this.camera.y += (Math.random() - 0.5) * this.screenShake;
+            this.screenShake *= SCREEN_SHAKE_DECAY;
+            if (this.screenShake < 0.1) this.screenShake = 0;
+        }
+        
         // Clean up dead ships from selection
         this.selectedShips = this.selectedShips.filter(s => s.alive);
+        
+        // Check skirmish mode wave progress
+        if (this.gameMode === 'skirmish') {
+            this.checkSkirmishWave();
+        }
     }
     
     draw() {
@@ -1069,14 +1241,36 @@ class BattleshipsForeverGame {
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw stars (parallax effect with pseudo-random distribution)
-        this.ctx.fillStyle = '#ffffff';
-        const STAR_SEED_X = 123;
-        const STAR_SEED_Y = 456;
-        for (let i = 0; i < 100; i++) {
-            const x = (i * STAR_SEED_X + this.camera.x * 0.1) % this.canvas.width;
-            const y = (i * STAR_SEED_Y + this.camera.y * 0.1) % this.canvas.height;
+        // Draw stars (multi-layer parallax effect with pseudo-random distribution)
+        // Far stars (slowest parallax, dimmer)
+        this.ctx.fillStyle = '#444444';
+        const STAR_SEED_X1 = 123;
+        const STAR_SEED_Y1 = 456;
+        for (let i = 0; i < 50; i++) {
+            const x = (i * STAR_SEED_X1 + this.camera.x * 0.05) % this.canvas.width;
+            const y = (i * STAR_SEED_Y1 + this.camera.y * 0.05) % this.canvas.height;
             this.ctx.fillRect(x, y, 1, 1);
+        }
+        
+        // Mid-distance stars
+        this.ctx.fillStyle = '#888888';
+        const STAR_SEED_X2 = 789;
+        const STAR_SEED_Y2 = 321;
+        for (let i = 0; i < 75; i++) {
+            const x = (i * STAR_SEED_X2 + this.camera.x * 0.1) % this.canvas.width;
+            const y = (i * STAR_SEED_Y2 + this.camera.y * 0.1) % this.canvas.height;
+            this.ctx.fillRect(x, y, 1, 1);
+        }
+        
+        // Near stars (faster parallax, brighter)
+        this.ctx.fillStyle = '#ffffff';
+        const STAR_SEED_X3 = 234;
+        const STAR_SEED_Y3 = 567;
+        for (let i = 0; i < 50; i++) {
+            const x = (i * STAR_SEED_X3 + this.camera.x * 0.2) % this.canvas.width;
+            const y = (i * STAR_SEED_Y3 + this.camera.y * 0.2) % this.canvas.height;
+            const size = (i % 3 === 0) ? 2 : 1; // Some stars slightly bigger
+            this.ctx.fillRect(x, y, size, size);
         }
         
         // Draw projectiles
@@ -1362,6 +1556,13 @@ class BattleshipsForeverGame {
     updateUI() {
         document.getElementById('shipCount').textContent = 
             `Ships: ${this.ships.filter(s => s.alive).length}`;
+        
+        // Update mode display
+        let modeText = this.gameMode === 'skirmish' ? 'Skirmish' : 'Sandbox';
+        if (this.gameMode === 'skirmish') {
+            modeText += ` | Wave: ${this.wave} | Score: ${this.score}`;
+        }
+        document.getElementById('mode').textContent = `Mode: ${modeText}`;
     }
     
     gameLoop() {
