@@ -647,6 +647,13 @@ class BattleshipsForeverGame {
         this.paused = false;
         this.inGame = false;
         this.difficulty = 'normal';
+        this.gameMode = 'sandbox'; // sandbox, skirmish
+        
+        // Skirmish mode state
+        this.wave = 0;
+        this.enemiesRemaining = 0;
+        this.score = 0;
+        this.waveActive = false;
         
         // Initialize audio manager
         this.audio = new AudioManager();
@@ -671,14 +678,99 @@ class BattleshipsForeverGame {
         this.audio.playMusic('Thememusic.ogg');
     }
     
-    startGame() {
+    startGame(mode = 'sandbox') {
         this.audio.playSound('buttonClick');
         this.inGame = true;
         this.paused = false;
+        this.gameMode = mode;
         document.getElementById('mainMenu').classList.add('hidden');
         document.getElementById('ui').style.display = 'flex';
         document.getElementById('instructions').style.display = 'block';
         this.audio.playMusic('Combatmusic.ogg');
+        
+        // Initialize game mode
+        if (mode === 'skirmish') {
+            this.startSkirmish();
+        }
+    }
+    
+    startSkirmish() {
+        // Reset skirmish state
+        this.wave = 0;
+        this.score = 0;
+        this.enemiesRemaining = 0;
+        this.waveActive = false;
+        this.ships = [];
+        this.projectiles = [];
+        this.particles = [];
+        
+        // Spawn player ship
+        const playerShip = new Ship(
+            this.canvas.width / 2 + this.camera.x,
+            this.canvas.height / 2 + this.camera.y,
+            'player'
+        );
+        playerShip.addSection(new ShipSection('cannon', 'medium', 30, 0));
+        playerShip.addSection(new ShipSection('cannon', 'medium', -30, 0));
+        playerShip.addSection(new ShipSection('laser', 'medium', 0, 30));
+        playerShip.addSection(new ShipSection('engine', 'medium', 0, -30));
+        this.ships.push(playerShip);
+        
+        // Start first wave
+        this.nextWave();
+        this.updateUI();
+    }
+    
+    nextWave() {
+        this.wave++;
+        this.waveActive = true;
+        
+        // Spawn enemies based on wave number
+        const enemyCount = Math.min(2 + this.wave, 10);
+        const factions = ['enemy', 'pirate', 'alien', 'razor'];
+        
+        for (let i = 0; i < enemyCount; i++) {
+            setTimeout(() => {
+                const faction = factions[Math.floor(Math.random() * factions.length)];
+                this.spawnEnemyShip(faction);
+                this.enemiesRemaining++;
+            }, i * 1000); // Spawn one enemy per second
+        }
+        
+        this.audio.playSound('deploy');
+    }
+    
+    checkSkirmishWave() {
+        if (this.gameMode !== 'skirmish' || !this.waveActive) return;
+        
+        // Count remaining enemies
+        const enemyCount = this.ships.filter(s => s.alive && s.team !== 'player').length;
+        
+        if (enemyCount === 0 && this.enemiesRemaining > 0) {
+            // Wave complete
+            this.waveActive = false;
+            this.score += this.wave * 100;
+            
+            // Wait 3 seconds before next wave
+            setTimeout(() => {
+                if (this.gameMode === 'skirmish' && this.inGame) {
+                    this.nextWave();
+                }
+            }, 3000);
+        }
+        
+        // Check if player is dead
+        const playerAlive = this.ships.some(s => s.alive && s.team === 'player');
+        if (!playerAlive) {
+            this.gameOver();
+        }
+    }
+    
+    gameOver() {
+        this.inGame = false;
+        this.paused = true;
+        alert(`Game Over! Wave: ${this.wave}, Score: ${this.score}`);
+        this.showMainMenu();
     }
     
     showOptions() {
@@ -1092,6 +1184,11 @@ class BattleshipsForeverGame {
         
         // Clean up dead ships from selection
         this.selectedShips = this.selectedShips.filter(s => s.alive);
+        
+        // Check skirmish mode wave progress
+        if (this.gameMode === 'skirmish') {
+            this.checkSkirmishWave();
+        }
     }
     
     draw() {
@@ -1392,6 +1489,13 @@ class BattleshipsForeverGame {
     updateUI() {
         document.getElementById('shipCount').textContent = 
             `Ships: ${this.ships.filter(s => s.alive).length}`;
+        
+        // Update mode display
+        let modeText = this.gameMode === 'skirmish' ? 'Skirmish' : 'Sandbox';
+        if (this.gameMode === 'skirmish') {
+            modeText += ` | Wave: ${this.wave} | Score: ${this.score}`;
+        }
+        document.getElementById('mode').textContent = `Mode: ${modeText}`;
     }
     
     gameLoop() {
