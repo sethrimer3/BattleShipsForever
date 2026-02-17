@@ -170,6 +170,55 @@
             100% { opacity: 0; transform: translateY(20px); }
         }
         
+        /* Wave Announcements */
+        .wave-announcement {
+            display: none;
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
+        .wave-announcement h1 {
+            color: #ffff00;
+            font-size: 64px;
+            text-shadow: 0 0 30px #ffff00;
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        .wave-announcement p {
+            color: #00ff00;
+            font-size: 20px;
+            margin-top: 10px;
+        }
+        
+        .wave-complete {
+            display: none;
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
+        .wave-complete h1 {
+            color: #00ff00;
+            font-size: 48px;
+            text-shadow: 0 0 20px #00ff00;
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        .wave-complete p {
+            color: #00ff00;
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        
         /* Main Menu Overlay */
         #mainMenu {
             position: absolute;
@@ -508,15 +557,15 @@
     </div>
     
     <!-- Wave Complete Overlay -->
-    <div id="waveComplete" style="display: none; position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 50; pointer-events: none;">
-        <h1 style="color: #00ff00; font-size: 48px; text-shadow: 0 0 20px #00ff00; animation: pulse 0.5s ease-in-out;">WAVE COMPLETE</h1>
-        <p style="color: #00ff00; font-size: 24px; margin-top: 10px;">+<span id="waveBonus">0</span> POINTS</p>
+    <div id="waveComplete" class="wave-complete">
+        <h1>WAVE COMPLETE</h1>
+        <p>+<span id="waveBonus">0</span> POINTS</p>
     </div>
     
     <!-- Wave Start Announcement -->
-    <div id="waveAnnouncement" style="display: none; position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 50; pointer-events: none;">
-        <h1 style="color: #ffff00; font-size: 64px; text-shadow: 0 0 30px #ffff00; animation: pulse 0.5s ease-in-out;">WAVE <span id="waveNumber">1</span></h1>
-        <p style="color: #00ff00; font-size: 20px; margin-top: 10px;">PREPARE FOR BATTLE</p>
+    <div id="waveAnnouncement" class="wave-announcement">
+        <h1>WAVE <span id="waveNumber">1</span></h1>
+        <p>PREPARE FOR BATTLE</p>
     </div>
     
     <!-- Game Over Screen -->

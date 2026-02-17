@@ -18,6 +18,11 @@ const BUTTON_HOVER_SOUND_CHANCE = 0.3; // 30% chance to play hover sound on regu
 // Explosion size thresholds
 const LARGE_SECTION_THRESHOLD = 30; // Sections larger than this use big explosion sounds
 
+// Game mode constants
+const GRINDER_SPAWN_INTERVAL_MS = 3000; // Time between enemy spawns in grinder mode
+const GRINDER_WAVE_PROGRESSION_SECONDS = 30; // Seconds before difficulty increases
+const BLOCKADE_SPAWN_DELAY_MS = 800; // Delay between enemy spawns in blockade mode
+
 // Audio System
 class AudioManager {
     constructor() {
@@ -776,6 +781,13 @@ class BattleshipsForeverGame {
     
     startGame(mode = 'sandbox') {
         this.audio.playSound('buttonClick');
+        
+        // Clean up any existing grinder spawn interval
+        if (this.grinderSpawnInterval) {
+            clearInterval(this.grinderSpawnInterval);
+            this.grinderSpawnInterval = null;
+        }
+        
         this.inGame = true;
         this.paused = false;
         this.gameMode = mode;
@@ -838,10 +850,17 @@ class BattleshipsForeverGame {
         
         // Show grinder mode announcement
         const announcement = document.getElementById('waveAnnouncement');
-        const waveNumber = document.getElementById('waveNumber');
+        const waveNumberSpan = document.getElementById('waveNumber');
+        const titleHeading = announcement.querySelector('h1');
         const prepareText = announcement.querySelector('p');
-        waveNumber.textContent = '';
-        announcement.querySelector('h1').textContent = 'GRINDER MODE';
+        
+        // Store original content
+        const originalTitle = titleHeading.innerHTML;
+        const originalSubtitle = prepareText.textContent;
+        
+        // Temporarily hide wave number and update text
+        waveNumberSpan.style.display = 'none';
+        titleHeading.childNodes[0].textContent = 'GRINDER MODE';
         prepareText.textContent = 'SURVIVE AS LONG AS YOU CAN';
         announcement.style.display = 'block';
         announcement.style.animation = 'fadeInOut 3s ease-in-out';
@@ -849,9 +868,10 @@ class BattleshipsForeverGame {
         setTimeout(() => {
             announcement.style.display = 'none';
             announcement.style.animation = '';
-            // Reset to default text
-            announcement.querySelector('h1').innerHTML = 'WAVE <span id="waveNumber">1</span>';
-            prepareText.textContent = 'PREPARE FOR BATTLE';
+            // Restore original content
+            titleHeading.innerHTML = originalTitle;
+            prepareText.textContent = originalSubtitle;
+            waveNumberSpan.style.display = '';
         }, 3000);
         
         // Spawn player ship
@@ -873,9 +893,9 @@ class BattleshipsForeverGame {
                 const faction = factions[Math.floor(Math.random() * factions.length)];
                 this.spawnEnemyShip(faction);
                 // Increase difficulty over time
-                this.wave = Math.floor(this.survivalTime / 30) + 1;
+                this.wave = Math.floor(this.survivalTime / GRINDER_WAVE_PROGRESSION_SECONDS) + 1;
             }
-        }, 3000); // Spawn enemy every 3 seconds
+        }, GRINDER_SPAWN_INTERVAL_MS);
         
         this.updateUI();
     }
@@ -975,7 +995,7 @@ class BattleshipsForeverGame {
                 
                 this.ships.push(enemy);
                 this.enemiesRemaining++;
-            }, i * 800); // Spawn slightly faster than skirmish
+            }, i * BLOCKADE_SPAWN_DELAY_MS);
         }
         
         this.audio.playSound('deploy');
@@ -1082,6 +1102,13 @@ class BattleshipsForeverGame {
     returnToMainMenu() {
         this.audio.playSound('buttonExit');
         document.getElementById('pauseMenu').classList.remove('active');
+        
+        // Clean up grinder spawn interval if active
+        if (this.grinderSpawnInterval) {
+            clearInterval(this.grinderSpawnInterval);
+            this.grinderSpawnInterval = null;
+        }
+        
         this.reset();
         this.showMainMenu();
     }
