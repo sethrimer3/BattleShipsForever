@@ -7,9 +7,16 @@ const MAX_SCREEN_SHAKE = 10;
 const SCREEN_SHAKE_DECAY = 0.9;
 const DEFAULT_SCROLL_SPEED = 20; // Match original bfdefault.ini
 
+// Glow color from original bfdefault.ini (orange)
+const GLOW_COLOR = 'rgb(160, 80, 0)';
+
 // Audio variation constants
 const LASER_VARIATION_CHANCE = 0.5;  // 50% chance to use alternate laser sound
 const MISSILE_VARIATION_CHANCE = 0.3; // 30% chance to use mini missile sound
+const BUTTON_HOVER_SOUND_CHANCE = 0.3; // 30% chance to play hover sound on regular buttons
+
+// Explosion size thresholds
+const LARGE_SECTION_THRESHOLD = 30; // Sections larger than this use big explosion sounds
 
 // Audio System
 class AudioManager {
@@ -461,7 +468,10 @@ class Ship {
             
             // Play explosion sound (randomize for variety)
             if (audio) {
-                const explosionSounds = ['explosion', 'explosion1', 'explosion2', 'explosion3', 'explosion4', 'explosion5'];
+                // Use varied explosion sounds based on section size
+                const explosionSounds = section.size > LARGE_SECTION_THRESHOLD 
+                    ? ['explosion', 'explosion1', 'explosion4', 'explosion5', 'expBig1', 'expBig2', 'expBig3']
+                    : ['explosion2', 'explosion3', 'expSmall1', 'expSmall2', 'expSmall3', 'expSmall4', 'expSmall5'];
                 const randomSound = explosionSounds[Math.floor(Math.random() * explosionSounds.length)];
                 audio.playSound(randomSound);
             }
@@ -685,7 +695,8 @@ class BattleshipsForeverGame {
             shimmer: true,
             doodads: true,
             interpolation: true,
-            scrollSpeed: DEFAULT_SCROLL_SPEED
+            scrollSpeed: DEFAULT_SCROLL_SPEED,
+            fullscreen: false
         };
         
         // Initialize space doodads (asteroids, debris)
@@ -699,6 +710,7 @@ class BattleshipsForeverGame {
         this.setupEventListeners();
         this.initializeShipEditor();
         this.setupShipBuilder();
+        this.setupMenuSounds();
         
         // Show main menu initially
         this.showMainMenu();
@@ -842,6 +854,9 @@ class BattleshipsForeverGame {
             const bonus = this.wave * 100;
             this.score += bonus;
             
+            // Play wave complete sound
+            this.audio.playSound('issueOrder');
+            
             // Show wave complete message
             document.getElementById('waveBonus').textContent = bonus;
             const waveCompleteEl = document.getElementById('waveComplete');
@@ -951,6 +966,22 @@ class BattleshipsForeverGame {
         this.audio.playSound('buttonClick');
     }
     
+    toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().then(() => {
+                this.displaySettings.fullscreen = true;
+                this.audio.playSound('buttonClick');
+            }).catch(err => {
+                console.warn('Could not enter fullscreen:', err);
+            });
+        } else {
+            document.exitFullscreen().then(() => {
+                this.displaySettings.fullscreen = false;
+                this.audio.playSound('buttonClick');
+            });
+        }
+    }
+    
     loadAudio() {
         // Load weapon firing sound effects - multiple variations for variety
         this.audio.loadSound('cannon', 'ORIGINAL/Sounds/snd_Blaster.wav');
@@ -964,6 +995,12 @@ class BattleshipsForeverGame {
         this.audio.loadSound('driver', 'ORIGINAL/Sounds/snd_Driver.wav');
         this.audio.loadSound('lancet', 'ORIGINAL/Sounds/snd_Lancet.wav');
         
+        // Additional weapon sounds from original
+        this.audio.loadSound('vulcan', 'ORIGINAL/Sounds/snd_VulcanCannonFire.wav');
+        this.audio.loadSound('pulse', 'ORIGINAL/Sounds/snd_Pulse.wav');
+        this.audio.loadSound('plasma', 'ORIGINAL/Sounds/snd_PlasmaFire.wav');
+        this.audio.loadSound('tachyon', 'ORIGINAL/Sounds/snd_Tachyon.wav');
+        
         // Load explosion sound effects - more variety
         this.audio.loadSound('explosion', 'ORIGINAL/Sounds/snd_ExpShockwave.wav');
         this.audio.loadSound('explosion1', 'ORIGINAL/Sounds/snd_FlashBoltExplode.wav');
@@ -971,6 +1008,16 @@ class BattleshipsForeverGame {
         this.audio.loadSound('explosion3', 'ORIGINAL/Sounds/snd_RAShellExplode.wav');
         this.audio.loadSound('explosion4', 'ORIGINAL/Sounds/snd_FlashBoltExplode3.wav');
         this.audio.loadSound('explosion5', 'ORIGINAL/Sounds/snd_FlashBoltExplode4.wav');
+        
+        // Additional explosion sounds
+        this.audio.loadSound('expBig1', 'ORIGINAL/Sounds/snd_expbig1.wav');
+        this.audio.loadSound('expBig2', 'ORIGINAL/Sounds/snd_expbig2.wav');
+        this.audio.loadSound('expBig3', 'ORIGINAL/Sounds/snd_expbig3.wav');
+        this.audio.loadSound('expSmall1', 'ORIGINAL/Sounds/snd_expsml1.wav');
+        this.audio.loadSound('expSmall2', 'ORIGINAL/Sounds/snd_expsml2.wav');
+        this.audio.loadSound('expSmall3', 'ORIGINAL/Sounds/snd_expsml3.wav');
+        this.audio.loadSound('expSmall4', 'ORIGINAL/Sounds/snd_expsml4.wav');
+        this.audio.loadSound('expSmall5', 'ORIGINAL/Sounds/snd_expsml5.wav');
         
         // Load shield/impact sounds
         this.audio.loadSound('shieldHit', 'ORIGINAL/Sounds/snd_DeflectorActivate.wav');
@@ -982,6 +1029,8 @@ class BattleshipsForeverGame {
         this.audio.loadSound('deploy', 'ORIGINAL/Sounds/snd_DeployPlatform.wav');
         this.audio.loadSound('issueOrder', 'ORIGINAL/Sounds/snd_IssueOrder.wav');
         this.audio.loadSound('negativeOrder', 'ORIGINAL/Sounds/snd_NegativeOrder.wav');
+        this.audio.loadSound('menuButton', 'ORIGINAL/Sounds/snd_menubut.wav');
+        this.audio.loadSound('toggleMode', 'ORIGINAL/Sounds/snd_ToggleMode.wav');
         
         // Load engine/booster sounds
         this.audio.loadSound('boosterActivate', 'ORIGINAL/Sounds/snd_BoosterActivate.wav');
@@ -994,6 +1043,30 @@ class BattleshipsForeverGame {
         await this.shipEditor.initialize();
     }
     
+    setupMenuSounds() {
+        // Add hover sounds to all menu buttons
+        const menuButtons = document.querySelectorAll('.menu-btn');
+        menuButtons.forEach(button => {
+            button.addEventListener('mouseenter', () => {
+                this.audio.playSound('menuButton');
+            });
+        });
+        
+        // Add sounds to regular buttons that don't already have sound handling
+        const regularButtons = document.querySelectorAll('.btn');
+        regularButtons.forEach(button => {
+            // Skip buttons that already have sound handling (marked with data attribute)
+            if (!button.hasAttribute('data-has-sound')) {
+                button.addEventListener('mouseenter', () => {
+                    // Subtle hover sound for regular buttons
+                    if (Math.random() < BUTTON_HOVER_SOUND_CHANCE) {
+                        this.audio.playSound('menuButton');
+                    }
+                });
+            }
+        });
+    }
+    
     resizeCanvas() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
@@ -1003,10 +1076,14 @@ class BattleshipsForeverGame {
         window.addEventListener('keydown', (e) => {
             this.keys[e.key.toLowerCase()] = true;
             
-            // Escape key to pause/unpause
+            // Escape key to pause/unpause or return from game over
             if (e.key === 'Escape') {
                 e.preventDefault();
-                if (this.inGame) {
+                // Check if on game over screen
+                const gameOverScreen = document.getElementById('gameOverScreen');
+                if (gameOverScreen && gameOverScreen.style.display === 'block') {
+                    this.returnToMainMenu();
+                } else if (this.inGame) {
                     if (this.paused) {
                         this.resumeGame();
                     } else {

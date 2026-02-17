@@ -319,8 +319,8 @@
             <span id="fps">FPS: 0</span> | 
             <span id="shipCount">Ships: 0</span> |
             <span id="mode">Mode: Sandbox</span> |
-            <button class="btn" onclick="game.audio.toggleSound()" style="padding: 4px 8px; font-size: 12px;" title="Toggle Sound Effects">🔊 SFX</button>
-            <button class="btn" onclick="game.audio.toggleMusic()" style="padding: 4px 8px; font-size: 12px;" title="Toggle Music">🎵 Music</button>
+            <button class="btn" onclick="game.audio.toggleSound()" style="padding: 4px 8px; font-size: 12px;" title="Toggle Sound Effects" data-has-sound>🔊 SFX</button>
+            <button class="btn" onclick="game.audio.toggleMusic()" style="padding: 4px 8px; font-size: 12px;" title="Toggle Music" data-has-sound>🎵 Music</button>
         </div>
     </div>
     
@@ -429,6 +429,11 @@
             <input type="checkbox" id="interpolationToggle" checked onchange="game.toggleInterpolation(this.checked)">
         </div>
         
+        <div class="option-row">
+            <label>Fullscreen:</label>
+            <button class="btn" onclick="game.toggleFullscreen()" style="width: auto; padding: 4px 12px;">Toggle</button>
+        </div>
+        
         <div style="margin-top: 30px; text-align: center;">
             <button class="btn" onclick="game.closeOptions()">BACK</button>
         </div>
@@ -456,6 +461,7 @@
             <p style="color: #00ff00; font-size: 32px; margin: 10px 0;">Final Score: <span id="finalScore">0</span></p>
             <button class="menu-btn" onclick="game.startGame('skirmish')" style="margin-top: 30px;">TRY AGAIN</button>
             <button class="menu-btn" onclick="game.returnToMainMenu()">MAIN MENU</button>
+            <p style="color: #888; font-size: 14px; margin-top: 20px;">Press ESC to return to main menu</p>
         </div>
     </div>
     
