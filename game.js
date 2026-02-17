@@ -5,6 +5,7 @@
 const SCREEN_SHAKE_INTENSITY = 0.05;
 const MAX_SCREEN_SHAKE = 10;
 const SCREEN_SHAKE_DECAY = 0.9;
+const DEFAULT_SCROLL_SPEED = 20; // Match original bfdefault.ini
 
 // Audio System
 class AudioManager {
@@ -12,8 +13,8 @@ class AudioManager {
         this.sounds = {};
         this.music = null;
         this.currentMusicTrack = null;
-        this.soundVolume = 0.5;
-        this.musicVolume = 0.3;
+        this.soundVolume = 0.9; // Match original default SFXVol = 0.9
+        this.musicVolume = 0.4; // Match original default MusicVol = 40 (0.4)
         this.enabled = true;
         this.musicEnabled = true;
     }
@@ -463,7 +464,7 @@ class Ship {
         this.updateProperties();
     }
     
-    draw(ctx, camera) {
+    draw(ctx, camera, displaySettings = null) {
         if (!this.alive) return;
         
         ctx.save();
@@ -590,9 +591,10 @@ class Ship {
                     Math.sqrt(s.localX * s.localX + s.localY * s.localY) + s.radius
                 )) + 15;
                 
-                // Animated shield effect
+                // Animated shield effect (with shimmer if enabled)
                 const time = Date.now() / 1000;
-                const shimmer = Math.sin(time * 2) * 0.1 + 0.9;
+                const shimmer = (displaySettings && displaySettings.shimmer) ? 
+                    (Math.sin(time * 2) * 0.1 + 0.9) : 1.0;
                 
                 ctx.strokeStyle = `rgba(136, 204, 255, ${0.3 * shimmer})`;
                 ctx.lineWidth = 3;
@@ -602,18 +604,20 @@ class Ship {
                 ctx.stroke();
                 ctx.setLineDash([]);
                 
-                // Shield glow
-                ctx.save();
-                ctx.globalAlpha = 0.1 * shimmer;
-                const shieldGradient = ctx.createRadialGradient(0, 0, size - 10, 0, 0, size);
-                shieldGradient.addColorStop(0, '#88ccff00');
-                shieldGradient.addColorStop(0.8, '#88ccff88');
-                shieldGradient.addColorStop(1, '#88ccff00');
-                ctx.fillStyle = shieldGradient;
-                ctx.beginPath();
-                ctx.arc(0, 0, size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
+                // Shield glow (with gradient if enabled)
+                if (!displaySettings || displaySettings.gradients) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.1 * shimmer;
+                    const shieldGradient = ctx.createRadialGradient(0, 0, size - 10, 0, 0, size);
+                    shieldGradient.addColorStop(0, '#88ccff00');
+                    shieldGradient.addColorStop(0.8, '#88ccff88');
+                    shieldGradient.addColorStop(1, '#88ccff00');
+                    ctx.fillStyle = shieldGradient;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
             }
         }
         
@@ -663,6 +667,20 @@ class BattleshipsForeverGame {
         // Screen effects
         this.screenShake = 0;
         
+        // Display settings (matching original bfdefault.ini)
+        this.displaySettings = {
+            particles: true,
+            gradients: true,
+            shimmer: true,
+            doodads: true,
+            interpolation: true,
+            scrollSpeed: DEFAULT_SCROLL_SPEED
+        };
+        
+        // Initialize space doodads (asteroids, debris)
+        this.doodads = [];
+        this.initializeDoodads();
+        
         // Initialize audio manager
         this.audio = new AudioManager();
         this.loadAudio();
@@ -686,6 +704,48 @@ class BattleshipsForeverGame {
         document.getElementById('gameOverScreen').style.display = 'none';
         document.getElementById('pauseMenu').classList.remove('active');
         this.audio.playMusic('Thememusic.ogg');
+    }
+    
+    initializeDoodads() {
+        // Create space doodads (asteroids, debris) scattered across the playfield
+        const doodadTypes = [
+            { type: 'asteroid1', size: 15, color: '#666666' },
+            { type: 'asteroid2', size: 25, color: '#777777' },
+            { type: 'asteroid3', size: 20, color: '#555555' },
+            { type: 'debris1', size: 10, color: '#888888' },
+            { type: 'debris2', size: 8, color: '#999999' }
+        ];
+        
+        // Spawn doodads in a large area around origin
+        for (let i = 0; i < 30; i++) {
+            const type = doodadTypes[Math.floor(Math.random() * doodadTypes.length)];
+            const doodad = {
+                x: (Math.random() - 0.5) * 3000,
+                y: (Math.random() - 0.5) * 3000,
+                size: type.size,
+                color: type.color,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.02,
+                type: type.type,
+                parallax: 0.3 + Math.random() * 0.3 // Parallax factor for depth
+            };
+            
+            // Pre-calculate asteroid shape to avoid flickering
+            if (doodad.type.startsWith('asteroid')) {
+                const sides = 6 + Math.floor(Math.random() * 2); // 6 or 7 sides for variety
+                doodad.vertices = [];
+                for (let j = 0; j < sides; j++) {
+                    const angle = (j / sides) * Math.PI * 2;
+                    const radius = doodad.size * (0.8 + Math.random() * 0.4);
+                    doodad.vertices.push({
+                        x: Math.cos(angle) * radius,
+                        y: Math.sin(angle) * radius
+                    });
+                }
+            }
+            
+            this.doodads.push(doodad);
+        }
     }
     
     startGame(mode = 'sandbox') {
@@ -841,6 +901,36 @@ class BattleshipsForeverGame {
     
     setDifficulty(diff) {
         this.difficulty = diff;
+        this.audio.playSound('buttonClick');
+    }
+    
+    setScrollSpeed(value) {
+        this.displaySettings.scrollSpeed = parseInt(value);
+        document.getElementById('scrollSpeedValue').textContent = value;
+    }
+    
+    toggleParticles(enabled) {
+        this.displaySettings.particles = enabled;
+        this.audio.playSound('buttonClick');
+    }
+    
+    toggleGradients(enabled) {
+        this.displaySettings.gradients = enabled;
+        this.audio.playSound('buttonClick');
+    }
+    
+    toggleShimmer(enabled) {
+        this.displaySettings.shimmer = enabled;
+        this.audio.playSound('buttonClick');
+    }
+    
+    toggleDoodads(enabled) {
+        this.displaySettings.doodads = enabled;
+        this.audio.playSound('buttonClick');
+    }
+    
+    toggleInterpolation(enabled) {
+        this.displaySettings.interpolation = enabled;
         this.audio.playSound('buttonClick');
     }
     
@@ -1161,22 +1251,24 @@ class BattleshipsForeverGame {
                     // Add screen shake on impact
                     this.screenShake = Math.min(this.screenShake + proj.damage * SCREEN_SHAKE_INTENSITY, MAX_SCREEN_SHAKE);
                     
-                    // Create enhanced explosion particles
-                    const particleCount = proj.damage > 30 ? 20 : 15; // More particles for high damage
-                    for (let i = 0; i < particleCount; i++) {
-                        const angle = Math.random() * Math.PI * 2;
-                        const speed = 50 + Math.random() * 150;
-                        const size = 2 + Math.random() * 3;
-                        this.particles.push({
-                            position: proj.position,
-                            velocity: new Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed),
-                            life: 0.5 + Math.random() * 0.3,
-                            createdAt: currentTime,
-                            size: size,
-                            color: proj.type === 'laser' ? '#00ffff' : 
-                                   proj.type === 'missile' ? '#ffff00' :
-                                   proj.type === 'railgun' ? '#ff00ff' : '#ff8800'
-                        });
+                    // Create enhanced explosion particles (if enabled)
+                    if (this.displaySettings.particles) {
+                        const particleCount = proj.damage > 30 ? 20 : 15; // More particles for high damage
+                        for (let i = 0; i < particleCount; i++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const speed = 50 + Math.random() * 150;
+                            const size = 2 + Math.random() * 3;
+                            this.particles.push({
+                                position: proj.position,
+                                velocity: new Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed),
+                                life: 0.5 + Math.random() * 0.3,
+                                createdAt: currentTime,
+                                size: size,
+                                color: proj.type === 'laser' ? '#00ffff' : 
+                                       proj.type === 'missile' ? '#ffff00' :
+                                       proj.type === 'railgun' ? '#ff00ff' : '#ff8800'
+                            });
+                        }
                     }
                     
                     // Railgun penetrates, others are destroyed on hit
@@ -1214,8 +1306,12 @@ class BattleshipsForeverGame {
             if (count > 0) {
                 const targetCameraX = avgX / count - this.canvas.width / 2;
                 const targetCameraY = avgY / count - this.canvas.height / 2;
-                this.camera.x += (targetCameraX - this.camera.x) * 0.05;
-                this.camera.y += (targetCameraY - this.camera.y) * 0.05;
+                // Use interpolation setting and scroll speed
+                // Base smoothing factor of 0.05 provides smooth camera following
+                const smoothFactor = this.displaySettings.interpolation ? 
+                    0.05 * (this.displaySettings.scrollSpeed / DEFAULT_SCROLL_SPEED) : 1.0;
+                this.camera.x += (targetCameraX - this.camera.x) * smoothFactor;
+                this.camera.y += (targetCameraY - this.camera.y) * smoothFactor;
             }
         }
         
@@ -1271,6 +1367,51 @@ class BattleshipsForeverGame {
             const y = (i * STAR_SEED_Y3 + this.camera.y * 0.2) % this.canvas.height;
             const size = (i % 3 === 0) ? 2 : 1; // Some stars slightly bigger
             this.ctx.fillRect(x, y, size, size);
+        }
+        
+        // Draw space doodads (asteroids, debris) if enabled
+        if (this.displaySettings.doodads) {
+            this.doodads.forEach(doodad => {
+                // Apply parallax effect for depth
+                const screenX = doodad.x - this.camera.x * doodad.parallax;
+                const screenY = doodad.y - this.camera.y * doodad.parallax;
+                
+                // Only draw if on screen (with margin)
+                if (screenX > -100 && screenX < this.canvas.width + 100 &&
+                    screenY > -100 && screenY < this.canvas.height + 100) {
+                    
+                    this.ctx.save();
+                    this.ctx.translate(screenX, screenY);
+                    this.ctx.rotate(doodad.rotation);
+                    
+                    // Draw based on type
+                    if (doodad.type.startsWith('asteroid') && doodad.vertices) {
+                        // Draw asteroid using pre-calculated vertices
+                        this.ctx.fillStyle = doodad.color;
+                        this.ctx.beginPath();
+                        doodad.vertices.forEach((vertex, i) => {
+                            if (i === 0) this.ctx.moveTo(vertex.x, vertex.y);
+                            else this.ctx.lineTo(vertex.x, vertex.y);
+                        });
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        
+                        // Add some detail lines
+                        this.ctx.strokeStyle = '#444444';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.stroke();
+                    } else {
+                        // Draw debris as small rectangles
+                        this.ctx.fillStyle = doodad.color;
+                        this.ctx.fillRect(-doodad.size/2, -doodad.size/2, doodad.size, doodad.size/2);
+                    }
+                    
+                    this.ctx.restore();
+                    
+                    // Slowly rotate doodad
+                    doodad.rotation += doodad.rotationSpeed;
+                }
+            });
         }
         
         // Draw projectiles
@@ -1418,47 +1559,54 @@ class BattleshipsForeverGame {
         });
         
         // Draw particles with enhanced visuals
-        const currentTime = performance.now() / 1000;
-        this.particles.forEach(particle => {
-            const screenPos = particle.position.subtract(this.camera);
-            const age = currentTime - particle.createdAt;
-            const alpha = 1 - (age / particle.life);
-            
-            this.ctx.save();
-            this.ctx.globalAlpha = alpha;
-            
-            // Add glow effect to particles
-            this.ctx.shadowBlur = 10;
-            this.ctx.shadowColor = particle.color;
-            
-            // Use particle size if available
-            const size = particle.size || 2;
-            
-            // Draw particle with gradient
-            const gradient = this.ctx.createRadialGradient(
-                screenPos.x, screenPos.y, 0,
-                screenPos.x, screenPos.y, size
-            );
-            
-            // Create color with alpha - handle both hex and rgb formats
-            const baseColor = particle.color;
-            const alphaColor1 = baseColor.startsWith('#') ? baseColor + '88' : baseColor.replace(')', ', 0.53)').replace('rgb', 'rgba');
-            const alphaColor2 = baseColor.startsWith('#') ? baseColor + '00' : baseColor.replace(')', ', 0)').replace('rgb', 'rgba');
-            
-            gradient.addColorStop(0, particle.color);
-            gradient.addColorStop(0.5, alphaColor1);
-            gradient.addColorStop(1, alphaColor2);
-            
-            this.ctx.fillStyle = gradient;
-            this.ctx.beginPath();
-            this.ctx.arc(screenPos.x, screenPos.y, size, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            this.ctx.restore();
-        });
+        if (this.displaySettings.particles && this.particles.length > 0) {
+            const currentTime = performance.now() / 1000;
+            this.particles.forEach(particle => {
+                const screenPos = particle.position.subtract(this.camera);
+                const age = currentTime - particle.createdAt;
+                const alpha = 1 - (age / particle.life);
+                
+                this.ctx.save();
+                this.ctx.globalAlpha = alpha;
+                
+                // Add glow effect to particles
+                this.ctx.shadowBlur = 10;
+                this.ctx.shadowColor = particle.color;
+                
+                // Use particle size if available
+                const size = particle.size || 2;
+                
+                // Draw particle with gradient (if enabled)
+                if (this.displaySettings.gradients) {
+                    const gradient = this.ctx.createRadialGradient(
+                        screenPos.x, screenPos.y, 0,
+                        screenPos.x, screenPos.y, size
+                    );
+                    
+                    // Create color with alpha - handle both hex and rgb formats
+                    const baseColor = particle.color;
+                    const alphaColor1 = baseColor.startsWith('#') ? baseColor + '88' : baseColor.replace(')', ', 0.53)').replace('rgb', 'rgba');
+                    const alphaColor2 = baseColor.startsWith('#') ? baseColor + '00' : baseColor.replace(')', ', 0)').replace('rgb', 'rgba');
+                    
+                    gradient.addColorStop(0, particle.color);
+                    gradient.addColorStop(0.5, alphaColor1);
+                    gradient.addColorStop(1, alphaColor2);
+                    
+                    this.ctx.fillStyle = gradient;
+                } else {
+                    this.ctx.fillStyle = particle.color;
+                }
+                
+                this.ctx.beginPath();
+                this.ctx.arc(screenPos.x, screenPos.y, size, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+            });
+        }
         
         // Draw ships
-        this.ships.forEach(ship => ship.draw(this.ctx, this.camera));
+        this.ships.forEach(ship => ship.draw(this.ctx, this.camera, this.displaySettings));
         
         // Draw ship builder preview
         if (this.shipBuilderActive && this.shipEditor) {
