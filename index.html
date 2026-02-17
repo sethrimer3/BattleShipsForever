@@ -373,14 +373,14 @@
         
         <div class="option-row">
             <label>Sound Effects Volume:</label>
-            <input type="range" id="sfxVolume" min="0" max="100" value="50" oninput="game.setSFXVolume(this.value)">
-            <span id="sfxValue">50%</span>
+            <input type="range" id="sfxVolume" min="0" max="100" value="90" oninput="game.setSFXVolume(this.value)">
+            <span id="sfxValue">90%</span>
         </div>
         
         <div class="option-row">
             <label>Music Volume:</label>
-            <input type="range" id="musicVolume" min="0" max="100" value="30" oninput="game.setMusicVolume(this.value)">
-            <span id="musicValue">30%</span>
+            <input type="range" id="musicVolume" min="0" max="100" value="40" oninput="game.setMusicVolume(this.value)">
+            <span id="musicValue">40%</span>
         </div>
         
         <div class="option-row">
@@ -390,6 +390,39 @@
                 <option value="normal" selected>Normal</option>
                 <option value="hard">Hard</option>
             </select>
+        </div>
+        
+        <div class="option-row">
+            <label>Scroll Speed:</label>
+            <input type="range" id="scrollSpeed" min="5" max="50" value="20" oninput="game.setScrollSpeed(this.value)">
+            <span id="scrollSpeedValue">20</span>
+        </div>
+        
+        <h4 style="color: #00ff00; margin: 20px 0 10px 0; font-size: 16px; border-top: 1px solid #004400; padding-top: 15px;">Display Settings</h4>
+        
+        <div class="option-row">
+            <label>Particles:</label>
+            <input type="checkbox" id="particlesToggle" checked onchange="game.toggleParticles(this.checked)">
+        </div>
+        
+        <div class="option-row">
+            <label>Gradients:</label>
+            <input type="checkbox" id="gradientsToggle" checked onchange="game.toggleGradients(this.checked)">
+        </div>
+        
+        <div class="option-row">
+            <label>Shimmer:</label>
+            <input type="checkbox" id="shimmerToggle" checked onchange="game.toggleShimmer(this.checked)">
+        </div>
+        
+        <div class="option-row">
+            <label>Doodads:</label>
+            <input type="checkbox" id="doodadsToggle" checked onchange="game.toggleDoodads(this.checked)">
+        </div>
+        
+        <div class="option-row">
+            <label>Interpolation:</label>
+            <input type="checkbox" id="interpolationToggle" checked onchange="game.toggleInterpolation(this.checked)">
         </div>
         
         <div style="margin-top: 30px; text-align: center;">
