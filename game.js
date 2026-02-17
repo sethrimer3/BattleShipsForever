@@ -7,6 +7,9 @@ const MAX_SCREEN_SHAKE = 10;
 const SCREEN_SHAKE_DECAY = 0.9;
 const DEFAULT_SCROLL_SPEED = 20; // Match original bfdefault.ini
 
+// Glow color from original bfdefault.ini (orange)
+const GLOW_COLOR = 'rgb(160, 80, 0)';
+
 // Audio variation constants
 const LASER_VARIATION_CHANCE = 0.5;  // 50% chance to use alternate laser sound
 const MISSILE_VARIATION_CHANCE = 0.3; // 30% chance to use mini missile sound
@@ -847,6 +850,9 @@ class BattleshipsForeverGame {
             const bonus = this.wave * 100;
             this.score += bonus;
             
+            // Play wave complete sound
+            this.audio.playSound('issueOrder');
+            
             // Show wave complete message
             document.getElementById('waveBonus').textContent = bonus;
             const waveCompleteEl = document.getElementById('waveComplete');
@@ -1066,10 +1072,14 @@ class BattleshipsForeverGame {
         window.addEventListener('keydown', (e) => {
             this.keys[e.key.toLowerCase()] = true;
             
-            // Escape key to pause/unpause
+            // Escape key to pause/unpause or return from game over
             if (e.key === 'Escape') {
                 e.preventDefault();
-                if (this.inGame) {
+                // Check if on game over screen
+                const gameOverScreen = document.getElementById('gameOverScreen');
+                if (gameOverScreen && gameOverScreen.style.display === 'block') {
+                    this.returnToMainMenu();
+                } else if (this.inGame) {
                     if (this.paused) {
                         this.resumeGame();
                     } else {
