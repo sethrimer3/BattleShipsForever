@@ -7,6 +7,10 @@ const MAX_SCREEN_SHAKE = 10;
 const SCREEN_SHAKE_DECAY = 0.9;
 const DEFAULT_SCROLL_SPEED = 20; // Match original bfdefault.ini
 
+// Audio variation constants
+const LASER_VARIATION_CHANCE = 0.5;  // 50% chance to use alternate laser sound
+const MISSILE_VARIATION_CHANCE = 0.3; // 30% chance to use mini missile sound
+
 // Audio System
 class AudioManager {
     constructor() {
@@ -388,9 +392,9 @@ class Ship {
                     // Play weapon sound effect with variety
                     if (audio) {
                         // Use sound variations for more authentic experience
-                        if (section.type === 'laser' && Math.random() > 0.5) {
+                        if (section.type === 'laser' && Math.random() < LASER_VARIATION_CHANCE) {
                             audio.playSound('laser2');
-                        } else if (section.type === 'missile' && Math.random() > 0.7) {
+                        } else if (section.type === 'missile' && Math.random() < MISSILE_VARIATION_CHANCE) {
                             audio.playSound('miniMissile');
                         } else {
                             audio.playSound(section.type);
