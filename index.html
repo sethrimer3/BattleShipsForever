@@ -157,6 +157,130 @@
             color: #00ff00;
             font-weight: bold;
         }
+        
+        /* Main Menu Overlay */
+        #mainMenu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        #mainMenu.hidden {
+            display: none;
+        }
+        
+        #mainMenu h1 {
+            font-size: 48px;
+            color: #00ff00;
+            text-shadow: 0 0 20px #00ff00;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #mainMenu h2 {
+            font-size: 18px;
+            color: #888;
+            margin-bottom: 40px;
+        }
+        
+        .menu-btn {
+            width: 300px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #002200;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .menu-btn:hover {
+            background: #004400;
+            box-shadow: 0 0 20px #00ff00;
+            transform: scale(1.05);
+        }
+        
+        /* Options Menu */
+        #optionsMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00ff00;
+            padding: 30px;
+            z-index: 101;
+            display: none;
+        }
+        
+        #optionsMenu.active {
+            display: block;
+        }
+        
+        #optionsMenu h3 {
+            color: #00ff00;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 24px;
+        }
+        
+        .option-row {
+            margin: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .option-row label {
+            color: #00ff00;
+            font-size: 14px;
+        }
+        
+        .option-row input[type="range"] {
+            width: 200px;
+        }
+        
+        .option-row span {
+            color: #00ff00;
+            min-width: 40px;
+            text-align: right;
+        }
+        
+        /* Pause Menu */
+        #pauseMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #00ff00;
+            padding: 30px;
+            z-index: 101;
+            display: none;
+            text-align: center;
+        }
+        
+        #pauseMenu.active {
+            display: block;
+        }
+        
+        #pauseMenu h2 {
+            color: #00ff00;
+            margin-bottom: 30px;
+            font-size: 32px;
+        }
     </style>
 </head>
 <body>
@@ -170,7 +294,9 @@
         <div id="info">
             <span id="fps">FPS: 0</span> | 
             <span id="shipCount">Ships: 0</span> |
-            <span id="mode">Mode: Sandbox</span>
+            <span id="mode">Mode: Sandbox</span> |
+            <button class="btn" onclick="game.audio.toggleSound()" style="padding: 4px 8px; font-size: 12px;" title="Toggle Sound Effects">🔊 SFX</button>
+            <button class="btn" onclick="game.audio.toggleMusic()" style="padding: 4px 8px; font-size: 12px;" title="Toggle Music">🎵 Music</button>
         </div>
     </div>
     
@@ -205,6 +331,53 @@
         <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #004400;">
             <button class="btn" style="width: 100%;" onclick="game.saveCurrentShip()">Save Ship Design</button>
         </div>
+    </div>
+    
+    <!-- Main Menu -->
+    <div id="mainMenu">
+        <h1>BATTLESHIPS FOREVER</h1>
+        <h2>HTML5 Edition</h2>
+        <button class="menu-btn" onclick="game.startGame()">START GAME</button>
+        <button class="menu-btn" onclick="game.showOptions()">OPTIONS</button>
+        <button class="menu-btn" onclick="window.open('https://github.com/sethrimer3/BattleShipsForever', '_blank')">ABOUT</button>
+    </div>
+    
+    <!-- Options Menu -->
+    <div id="optionsMenu">
+        <h3>OPTIONS</h3>
+        
+        <div class="option-row">
+            <label>Sound Effects Volume:</label>
+            <input type="range" id="sfxVolume" min="0" max="100" value="50" oninput="game.setSFXVolume(this.value)">
+            <span id="sfxValue">50%</span>
+        </div>
+        
+        <div class="option-row">
+            <label>Music Volume:</label>
+            <input type="range" id="musicVolume" min="0" max="100" value="30" oninput="game.setMusicVolume(this.value)">
+            <span id="musicValue">30%</span>
+        </div>
+        
+        <div class="option-row">
+            <label>Difficulty:</label>
+            <select id="difficulty" onchange="game.setDifficulty(this.value)" class="btn" style="width: auto;">
+                <option value="easy">Easy</option>
+                <option value="normal" selected>Normal</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <button class="btn" onclick="game.closeOptions()">BACK</button>
+        </div>
+    </div>
+    
+    <!-- Pause Menu -->
+    <div id="pauseMenu">
+        <h2>PAUSED</h2>
+        <button class="menu-btn" onclick="game.resumeGame()">RESUME</button>
+        <button class="menu-btn" onclick="game.showOptions()">OPTIONS</button>
+        <button class="menu-btn" onclick="game.returnToMainMenu()">MAIN MENU</button>
     </div>
     
     <div id="instructions">
