@@ -732,7 +732,7 @@ class BattleshipsForeverGame {
             
             // Pre-calculate asteroid shape to avoid flickering
             if (doodad.type.startsWith('asteroid')) {
-                const sides = 6 + Math.floor(Math.random() * 2);
+                const sides = 6 + Math.floor(Math.random() * 2); // 6 or 7 sides for variety
                 doodad.vertices = [];
                 for (let j = 0; j < sides; j++) {
                     const angle = (j / sides) * Math.PI * 2;
@@ -1307,6 +1307,7 @@ class BattleshipsForeverGame {
                 const targetCameraX = avgX / count - this.canvas.width / 2;
                 const targetCameraY = avgY / count - this.canvas.height / 2;
                 // Use interpolation setting and scroll speed
+                // Base smoothing factor of 0.05 provides smooth camera following
                 const smoothFactor = this.displaySettings.interpolation ? 
                     0.05 * (this.displaySettings.scrollSpeed / DEFAULT_SCROLL_SPEED) : 1.0;
                 this.camera.x += (targetCameraX - this.camera.x) * smoothFactor;
