@@ -836,6 +836,24 @@ class BattleshipsForeverGame {
         this.projectiles = [];
         this.particles = [];
         
+        // Show grinder mode announcement
+        const announcement = document.getElementById('waveAnnouncement');
+        const waveNumber = document.getElementById('waveNumber');
+        const prepareText = announcement.querySelector('p');
+        waveNumber.textContent = '';
+        announcement.querySelector('h1').textContent = 'GRINDER MODE';
+        prepareText.textContent = 'SURVIVE AS LONG AS YOU CAN';
+        announcement.style.display = 'block';
+        announcement.style.animation = 'fadeInOut 3s ease-in-out';
+        
+        setTimeout(() => {
+            announcement.style.display = 'none';
+            announcement.style.animation = '';
+            // Reset to default text
+            announcement.querySelector('h1').innerHTML = 'WAVE <span id="waveNumber">1</span>';
+            prepareText.textContent = 'PREPARE FOR BATTLE';
+        }, 3000);
+        
         // Spawn player ship
         const playerShip = new Ship(
             this.canvas.width / 2 + this.camera.x,
@@ -894,6 +912,9 @@ class BattleshipsForeverGame {
         this.wave++;
         this.waveActive = true;
         
+        // Show wave announcement
+        this.showWaveAnnouncement(this.wave);
+        
         // Switch to more intense music for higher waves
         if (this.wave === 5 && this.audio.currentMusicTrack !== 'Battlemusic.ogg') {
             this.audio.playMusic('Battlemusic.ogg');
@@ -917,6 +938,9 @@ class BattleshipsForeverGame {
     nextWaveBlockade() {
         this.wave++;
         this.waveActive = true;
+        
+        // Show wave announcement
+        this.showWaveAnnouncement(this.wave);
         
         // Switch to more intense music for higher waves
         if (this.wave === 5 && this.audio.currentMusicTrack !== 'Battlemusic.ogg') {
@@ -1080,6 +1104,18 @@ class BattleshipsForeverGame {
     setScrollSpeed(value) {
         this.displaySettings.scrollSpeed = parseInt(value);
         document.getElementById('scrollSpeedValue').textContent = value;
+    }
+    
+    showWaveAnnouncement(waveNum) {
+        const announcement = document.getElementById('waveAnnouncement');
+        document.getElementById('waveNumber').textContent = waveNum;
+        announcement.style.display = 'block';
+        announcement.style.animation = 'fadeInOut 2s ease-in-out';
+        
+        setTimeout(() => {
+            announcement.style.display = 'none';
+            announcement.style.animation = '';
+        }, 2000);
     }
     
     toggleParticles(enabled) {
