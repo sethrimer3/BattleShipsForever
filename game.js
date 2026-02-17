@@ -272,9 +272,9 @@ class Ship {
         
         // Difficulty modifiers
         const difficultySettings = {
-            easy: { aimAccuracy: 0.5, fireDistance: 350, rotationSpeed: 0.05, reactionTime: 1.5 },
-            normal: { aimAccuracy: 0.3, fireDistance: 400, rotationSpeed: 0.08, reactionTime: 1.0 },
-            hard: { aimAccuracy: 0.15, fireDistance: 450, rotationSpeed: 0.12, reactionTime: 0.5 }
+            easy: { aimAccuracy: 0.5, fireDistance: 350, rotationSpeed: 0.05 },
+            normal: { aimAccuracy: 0.3, fireDistance: 400, rotationSpeed: 0.08 },
+            hard: { aimAccuracy: 0.15, fireDistance: 450, rotationSpeed: 0.12 }
         };
         const settings = difficultySettings[difficulty] || difficultySettings.normal;
         
@@ -715,8 +715,7 @@ class BattleshipsForeverGame {
         this.audio.loadSound('selectShip', 'ORIGINAL/Sounds/snd_ChooseShip.wav');
         this.audio.loadSound('deploy', 'ORIGINAL/Sounds/snd_DeployPlatform.wav');
         
-        // Start background music
-        this.audio.playMusic('Combatmusic.ogg');
+        // Music will be started by menu system
     }
     
     async initializeShipEditor() {
@@ -1246,9 +1245,15 @@ class BattleshipsForeverGame {
                 screenPos.x, screenPos.y, 0,
                 screenPos.x, screenPos.y, size
             );
+            
+            // Create color with alpha - handle both hex and rgb formats
+            const baseColor = particle.color;
+            const alphaColor1 = baseColor.startsWith('#') ? baseColor + '88' : baseColor.replace(')', ', 0.53)').replace('rgb', 'rgba');
+            const alphaColor2 = baseColor.startsWith('#') ? baseColor + '00' : baseColor.replace(')', ', 0)').replace('rgb', 'rgba');
+            
             gradient.addColorStop(0, particle.color);
-            gradient.addColorStop(0.5, particle.color + '88');
-            gradient.addColorStop(1, particle.color + '00');
+            gradient.addColorStop(0.5, alphaColor1);
+            gradient.addColorStop(1, alphaColor2);
             
             this.ctx.fillStyle = gradient;
             this.ctx.beginPath();
