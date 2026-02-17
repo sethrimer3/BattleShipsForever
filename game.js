@@ -444,9 +444,11 @@ class Ship {
             const index = this.sections.indexOf(section);
             this.sections.splice(index, 1);
             
-            // Play explosion sound
+            // Play explosion sound (randomize for variety)
             if (audio) {
-                audio.playSound('explosion');
+                const explosionSounds = ['explosion', 'explosion1', 'explosion2', 'explosion3'];
+                const randomSound = explosionSounds[Math.floor(Math.random() * explosionSounds.length)];
+                audio.playSound(randomSound);
             }
             
             // If core is destroyed or no sections left, ship is destroyed
@@ -655,6 +657,9 @@ class BattleshipsForeverGame {
         this.score = 0;
         this.waveActive = false;
         
+        // Screen effects
+        this.screenShake = 0;
+        
         // Initialize audio manager
         this.audio = new AudioManager();
         this.loadAudio();
@@ -818,12 +823,19 @@ class BattleshipsForeverGame {
     }
     
     loadAudio() {
-        // Load sound effects
+        // Load weapon firing sound effects
         this.audio.loadSound('cannon', 'ORIGINAL/Sounds/snd_Blaster.wav');
         this.audio.loadSound('laser', 'ORIGINAL/Sounds/snd_BeamFire1.wav');
-        this.audio.loadSound('missile', 'ORIGINAL/Sounds/snd_Driver.wav');
+        this.audio.loadSound('missile', 'ORIGINAL/Sounds/snd_MissileLaunch.wav');
         this.audio.loadSound('railgun', 'ORIGINAL/Sounds/snd_Dieterling.wav');
+        
+        // Load explosion sound effects
         this.audio.loadSound('explosion', 'ORIGINAL/Sounds/snd_ExpShockwave.wav');
+        this.audio.loadSound('explosion1', 'ORIGINAL/Sounds/snd_FlashBoltExplode.wav');
+        this.audio.loadSound('explosion2', 'ORIGINAL/Sounds/snd_FlashBoltExplode2.wav');
+        this.audio.loadSound('explosion3', 'ORIGINAL/Sounds/snd_RAShellExplode.wav');
+        
+        // Load UI sound effects
         this.audio.loadSound('buttonClick', 'ORIGINAL/Sounds/snd_ClickButton.wav');
         this.audio.loadSound('selectShip', 'ORIGINAL/Sounds/snd_ChooseShip.wav');
         this.audio.loadSound('deploy', 'ORIGINAL/Sounds/snd_DeployPlatform.wav');
@@ -1124,6 +1136,9 @@ class BattleshipsForeverGame {
                 if (dist < 30) {
                     ship.takeDamage(proj.damage, this.audio);
                     
+                    // Add screen shake on impact
+                    this.screenShake = Math.min(this.screenShake + proj.damage * 0.05, 10);
+                    
                     // Create enhanced explosion particles
                     const particleCount = proj.damage > 30 ? 20 : 15; // More particles for high damage
                     for (let i = 0; i < particleCount; i++) {
@@ -1182,6 +1197,14 @@ class BattleshipsForeverGame {
             }
         }
         
+        // Apply and decay screen shake
+        if (this.screenShake > 0) {
+            this.camera.x += (Math.random() - 0.5) * this.screenShake;
+            this.camera.y += (Math.random() - 0.5) * this.screenShake;
+            this.screenShake *= 0.9; // Decay shake
+            if (this.screenShake < 0.1) this.screenShake = 0;
+        }
+        
         // Clean up dead ships from selection
         this.selectedShips = this.selectedShips.filter(s => s.alive);
         
@@ -1196,14 +1219,36 @@ class BattleshipsForeverGame {
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw stars (parallax effect with pseudo-random distribution)
-        this.ctx.fillStyle = '#ffffff';
-        const STAR_SEED_X = 123;
-        const STAR_SEED_Y = 456;
-        for (let i = 0; i < 100; i++) {
-            const x = (i * STAR_SEED_X + this.camera.x * 0.1) % this.canvas.width;
-            const y = (i * STAR_SEED_Y + this.camera.y * 0.1) % this.canvas.height;
+        // Draw stars (multi-layer parallax effect with pseudo-random distribution)
+        // Far stars (slowest parallax, dimmer)
+        this.ctx.fillStyle = '#444444';
+        const STAR_SEED_X1 = 123;
+        const STAR_SEED_Y1 = 456;
+        for (let i = 0; i < 50; i++) {
+            const x = (i * STAR_SEED_X1 + this.camera.x * 0.05) % this.canvas.width;
+            const y = (i * STAR_SEED_Y1 + this.camera.y * 0.05) % this.canvas.height;
             this.ctx.fillRect(x, y, 1, 1);
+        }
+        
+        // Mid-distance stars
+        this.ctx.fillStyle = '#888888';
+        const STAR_SEED_X2 = 789;
+        const STAR_SEED_Y2 = 321;
+        for (let i = 0; i < 75; i++) {
+            const x = (i * STAR_SEED_X2 + this.camera.x * 0.1) % this.canvas.width;
+            const y = (i * STAR_SEED_Y2 + this.camera.y * 0.1) % this.canvas.height;
+            this.ctx.fillRect(x, y, 1, 1);
+        }
+        
+        // Near stars (faster parallax, brighter)
+        this.ctx.fillStyle = '#ffffff';
+        const STAR_SEED_X3 = 234;
+        const STAR_SEED_Y3 = 567;
+        for (let i = 0; i < 50; i++) {
+            const x = (i * STAR_SEED_X3 + this.camera.x * 0.2) % this.canvas.width;
+            const y = (i * STAR_SEED_Y3 + this.camera.y * 0.2) % this.canvas.height;
+            const size = (i % 3 === 0) ? 2 : 1; // Some stars slightly bigger
+            this.ctx.fillRect(x, y, size, size);
         }
         
         // Draw projectiles
