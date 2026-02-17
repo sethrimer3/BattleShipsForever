@@ -1,6 +1,98 @@
 // Battleships Forever - HTML5 Space RTS Edition
 // A web-based recreation inspired by the original Battleships Forever
 
+// Audio System
+class AudioManager {
+    constructor() {
+        this.sounds = {};
+        this.music = null;
+        this.currentMusicTrack = null;
+        this.soundVolume = 0.5;
+        this.musicVolume = 0.3;
+        this.enabled = true;
+        this.musicEnabled = true;
+    }
+    
+    loadSound(name, path) {
+        try {
+            const audio = new Audio(path);
+            audio.volume = this.soundVolume;
+            audio.preload = 'auto';
+            this.sounds[name] = audio;
+        } catch (e) {
+            console.warn(`Could not load sound: ${path}`, e);
+        }
+    }
+    
+    playSound(name) {
+        if (!this.enabled || !this.sounds[name]) return;
+        try {
+            const sound = this.sounds[name].cloneNode();
+            sound.volume = this.soundVolume;
+            sound.play().catch(e => console.warn(`Could not play sound: ${name}`, e));
+        } catch (e) {
+            console.warn(`Error playing sound: ${name}`, e);
+        }
+    }
+    
+    playMusic(trackName, loop = true) {
+        if (!this.musicEnabled) return;
+        
+        // Stop current music if playing
+        if (this.music) {
+            this.music.pause();
+            this.music.currentTime = 0;
+        }
+        
+        const musicPath = `ORIGINAL/${trackName}`;
+        this.music = new Audio(musicPath);
+        this.music.volume = this.musicVolume;
+        this.music.loop = loop;
+        this.currentMusicTrack = trackName;
+        
+        this.music.play().catch(e => {
+            console.warn(`Could not play music: ${trackName}`, e);
+        });
+    }
+    
+    stopMusic() {
+        if (this.music) {
+            this.music.pause();
+            this.music.currentTime = 0;
+            this.currentMusicTrack = null;
+        }
+    }
+    
+    setSoundVolume(volume) {
+        this.soundVolume = Math.max(0, Math.min(1, volume));
+        Object.values(this.sounds).forEach(sound => {
+            sound.volume = this.soundVolume;
+        });
+    }
+    
+    setMusicVolume(volume) {
+        this.musicVolume = Math.max(0, Math.min(1, volume));
+        if (this.music) {
+            this.music.volume = this.musicVolume;
+        }
+    }
+    
+    toggleSound() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+    }
+    
+    toggleMusic() {
+        this.musicEnabled = !this.musicEnabled;
+        if (this.musicEnabled && this.currentMusicTrack) {
+            this.playMusic(this.currentMusicTrack);
+        } else if (!this.musicEnabled) {
+            this.stopMusic();
+        }
+        return this.musicEnabled;
+    }
+}
+
 class Vector2 {
     constructor(x = 0, y = 0) {
         this.x = x;
@@ -156,7 +248,7 @@ class Ship {
         this.alive = this.health > 0;
     }
     
-    update(dt, ships, projectiles) {
+    update(dt, ships, projectiles, audio) {
         if (!this.alive) return;
         
         // AI behavior for enemy ships
@@ -212,7 +304,7 @@ class Ship {
             
             // Fire weapons if in range and facing target
             if (distance < 400 && Math.abs(angleDiff) < 0.3) {
-                this.fireWeapons(projectiles, Date.now());
+                this.fireWeapons(projectiles, Date.now(), audio);
             }
             
             // Move towards enemy if too far
@@ -236,11 +328,16 @@ class Ship {
         this.updateProperties();
     }
     
-    fireWeapons(projectiles, currentTime) {
+    fireWeapons(projectiles, currentTime, audio) {
         for (const section of this.sections) {
             if (['cannon', 'laser', 'missile', 'railgun'].includes(section.type)) {
                 if (currentTime - section.lastFired > section.fireRate) {
                     section.lastFired = currentTime;
+                    
+                    // Play weapon sound effect
+                    if (audio) {
+                        audio.playSound(section.type);
+                    }
                     
                     // Calculate weapon position in world space
                     const rotated = new Vector2(section.localX, section.localY).rotate(this.angle);
@@ -285,7 +382,7 @@ class Ship {
         }
     }
     
-    takeDamage(damage) {
+    takeDamage(damage, audio) {
         if (this.sections.length === 0) {
             this.alive = false;
             return;
@@ -299,6 +396,11 @@ class Ship {
             // Remove destroyed section
             const index = this.sections.indexOf(section);
             this.sections.splice(index, 1);
+            
+            // Play explosion sound
+            if (audio) {
+                audio.playSound('explosion');
+            }
             
             // If core is destroyed or no sections left, ship is destroyed
             if (this.sections.length === 0 || !this.sections.some(s => s.type === 'core')) {
@@ -457,10 +559,29 @@ class BattleshipsForeverGame {
         this.frameCount = 0;
         this.lastFpsUpdate = performance.now();
         
+        // Initialize audio manager
+        this.audio = new AudioManager();
+        this.loadAudio();
+        
         this.setupEventListeners();
         this.initializeShipEditor();
         this.setupShipBuilder();
         this.gameLoop();
+    }
+    
+    loadAudio() {
+        // Load sound effects
+        this.audio.loadSound('cannon', 'ORIGINAL/Sounds/snd_Blaster.wav');
+        this.audio.loadSound('laser', 'ORIGINAL/Sounds/snd_BeamFire1.wav');
+        this.audio.loadSound('missile', 'ORIGINAL/Sounds/snd_Driver.wav');
+        this.audio.loadSound('railgun', 'ORIGINAL/Sounds/snd_Dieterling.wav');
+        this.audio.loadSound('explosion', 'ORIGINAL/Sounds/snd_ExpShockwave.wav');
+        this.audio.loadSound('buttonClick', 'ORIGINAL/Sounds/snd_ClickButton.wav');
+        this.audio.loadSound('selectShip', 'ORIGINAL/Sounds/snd_ChooseShip.wav');
+        this.audio.loadSound('deploy', 'ORIGINAL/Sounds/snd_DeployPlatform.wav');
+        
+        // Start background music
+        this.audio.playMusic('Combatmusic.ogg');
     }
     
     async initializeShipEditor() {
@@ -482,7 +603,7 @@ class BattleshipsForeverGame {
                 if (this.selectedShips.length > 0) {
                     const now = Date.now();
                     this.selectedShips.forEach(ship => {
-                        ship.fireWeapons(this.projectiles, now);
+                        ship.fireWeapons(this.projectiles, now, this.audio);
                     });
                 }
             }
@@ -576,6 +697,8 @@ class BattleshipsForeverGame {
     }
     
     spawnPlayerShip() {
+        this.audio.playSound('deploy');
+        
         let ship;
         
         // Check if ship editor has a design
@@ -604,6 +727,8 @@ class BattleshipsForeverGame {
     }
     
     spawnEnemyShip() {
+        this.audio.playSound('deploy');
+        
         const angle = Math.random() * Math.PI * 2;
         const distance = 500;
         
@@ -672,7 +797,7 @@ class BattleshipsForeverGame {
         }
         
         // Update ships
-        this.ships.forEach(ship => ship.update(dt, this.ships, this.projectiles));
+        this.ships.forEach(ship => ship.update(dt, this.ships, this.projectiles, this.audio));
         
         // Update projectiles
         const currentTime = performance.now() / 1000;
@@ -723,7 +848,7 @@ class BattleshipsForeverGame {
                 
                 const dist = ship.position.subtract(proj.position).length();
                 if (dist < 30) {
-                    ship.takeDamage(proj.damage);
+                    ship.takeDamage(proj.damage, this.audio);
                     
                     // Create explosion particles
                     for (let i = 0; i < 10; i++) {
