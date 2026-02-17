@@ -13,6 +13,10 @@ const GLOW_COLOR = 'rgb(160, 80, 0)';
 // Audio variation constants
 const LASER_VARIATION_CHANCE = 0.5;  // 50% chance to use alternate laser sound
 const MISSILE_VARIATION_CHANCE = 0.3; // 30% chance to use mini missile sound
+const BUTTON_HOVER_SOUND_CHANCE = 0.3; // 30% chance to play hover sound on regular buttons
+
+// Explosion size thresholds
+const LARGE_SECTION_THRESHOLD = 30; // Sections larger than this use big explosion sounds
 
 // Audio System
 class AudioManager {
@@ -465,7 +469,7 @@ class Ship {
             // Play explosion sound (randomize for variety)
             if (audio) {
                 // Use varied explosion sounds based on section size
-                const explosionSounds = section.size > 30 
+                const explosionSounds = section.size > LARGE_SECTION_THRESHOLD 
                     ? ['explosion', 'explosion1', 'explosion4', 'explosion5', 'expBig1', 'expBig2', 'expBig3']
                     : ['explosion2', 'explosion3', 'expSmall1', 'expSmall2', 'expSmall3', 'expSmall4', 'expSmall5'];
                 const randomSound = explosionSounds[Math.floor(Math.random() * explosionSounds.length)];
@@ -1048,14 +1052,14 @@ class BattleshipsForeverGame {
             });
         });
         
-        // Add sounds to regular buttons
+        // Add sounds to regular buttons that don't already have sound handling
         const regularButtons = document.querySelectorAll('.btn');
         regularButtons.forEach(button => {
-            // Skip if already has onclick that plays sound
-            if (!button.onclick || !button.onclick.toString().includes('playSound')) {
+            // Skip buttons that already have sound handling (marked with data attribute)
+            if (!button.hasAttribute('data-has-sound')) {
                 button.addEventListener('mouseenter', () => {
                     // Subtle hover sound for regular buttons
-                    if (Math.random() < 0.3) { // 30% chance to avoid too much noise
+                    if (Math.random() < BUTTON_HOVER_SOUND_CHANCE) {
                         this.audio.playSound('menuButton');
                     }
                 });
