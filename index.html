@@ -425,6 +425,7 @@
                 </div>
             </div>
             <button class="btn" onclick="game.reset()">Reset</button>
+            <button class="btn" onclick="game.toggleHelp()" title="Show Controls & Help">❓ Help</button>
         </div>
         <div id="info">
             <span id="fps">FPS: 0</span> | 
@@ -432,6 +433,59 @@
             <span id="mode">Mode: Sandbox</span> |
             <button class="btn" onclick="game.audio.toggleSound()" style="padding: 4px 8px; font-size: 12px;" title="Toggle Sound Effects" data-has-sound>🔊 SFX</button>
             <button class="btn" onclick="game.audio.toggleMusic()" style="padding: 4px 8px; font-size: 12px;" title="Toggle Music" data-has-sound>🎵 Music</button>
+        </div>
+    </div>
+    
+    <!-- Help Overlay -->
+    <div id="helpOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: none; justify-content: center; align-items: center; z-index: 150;">
+        <div style="width: 700px; max-height: 90vh; background: rgba(0, 20, 0, 0.95); border: 2px solid #00ff00; padding: 30px; overflow-y: auto;">
+            <h2 style="color: #00ff00; text-align: center; margin-bottom: 20px; font-size: 32px;">⚡ CONTROLS & HELP ⚡</h2>
+            
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #0ff; margin-bottom: 10px; font-size: 20px;">🎮 SHIP CONTROLS</h3>
+                <div style="color: #00ff00; line-height: 1.8; font-size: 14px;">
+                    <p><strong>Click Ship</strong> - Select ship (hold Shift for multiple)</p>
+                    <p><strong>Right Click</strong> - Move selected ships to location</p>
+                    <p><strong>W/A/S/D</strong> - Manual ship movement</p>
+                    <p><strong>Q/E</strong> - Rotate ship left/right</p>
+                    <p><strong>Space</strong> - Auto-fire toggle</p>
+                    <p><strong>Mouse Wheel</strong> - Zoom in/out</p>
+                    <p><strong>Arrow Keys</strong> - Pan camera</p>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #0ff; margin-bottom: 10px; font-size: 20px;">🚀 GAME MODES</h3>
+                <div style="color: #00ff00; line-height: 1.8; font-size: 14px;">
+                    <p><strong>Sandbox</strong> - Creative mode, spawn any ships</p>
+                    <p><strong>Skirmish</strong> - Wave-based combat, progressive difficulty</p>
+                    <p><strong>Grinder</strong> - Endless survival, score by time alive</p>
+                    <p><strong>Blockade</strong> - Defend position from right-side attacks</p>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #0ff; margin-bottom: 10px; font-size: 20px;">🔧 SHIP BUILDER</h3>
+                <div style="color: #00ff00; line-height: 1.8; font-size: 14px;">
+                    <p><strong>Save to Library</strong> - Store design for reuse</p>
+                    <p><strong>Load from Library</strong> - Quick access to saved ships</p>
+                    <p><strong>Export to File</strong> - Download as JSON for sharing</p>
+                    <p><strong>View Library</strong> - Browse and deploy saved designs</p>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #0ff; margin-bottom: 10px; font-size: 20px;">💡 TIPS</h3>
+                <div style="color: #00ff00; line-height: 1.8; font-size: 14px;">
+                    <p>• Settings and ships are saved automatically</p>
+                    <p>• Track your high scores in Statistics menu</p>
+                    <p>• Use different factions for testing strategies</p>
+                    <p>• Press ESC during game to pause</p>
+                    <p>• Adjust difficulty in Options for challenge</p>
+                </div>
+            </div>
+            
+            <button class="menu-btn" onclick="game.toggleHelp()" style="width: 100%;">CLOSE</button>
         </div>
     </div>
     
@@ -475,36 +529,72 @@
     <div id="mainMenu">
         <h1>BATTLESHIPS FOREVER</h1>
         <h2>HTML5 Edition</h2>
-        <button class="menu-btn" onclick="game.startGame('sandbox')">SANDBOX MODE</button>
-        <button class="menu-btn" onclick="game.showGameModeMenu()">SKIRMISH MODES</button>
-        <button class="menu-btn" onclick="game.showStatistics()">STATISTICS</button>
-        <button class="menu-btn" onclick="game.showOptions()">OPTIONS</button>
-        <button class="menu-btn" onclick="window.open('https://github.com/sethrimer3/BattleShipsForever', '_blank')">ABOUT</button>
+        <button class="menu-btn" onclick="game.startGame('sandbox')" title="Free play mode - Build and test ships without enemies">🎨 SANDBOX MODE</button>
+        <button class="menu-btn" onclick="game.showGameModeMenu()" title="Wave-based combat modes">⚔️ SKIRMISH MODES</button>
+        <button class="menu-btn" onclick="game.showStatistics()" title="View your high scores and records">📊 STATISTICS</button>
+        <button class="menu-btn" onclick="game.showOptions()" title="Adjust audio, difficulty, and display settings">⚙️ OPTIONS</button>
+        <button class="menu-btn" onclick="window.open('https://github.com/sethrimer3/BattleShipsForever', '_blank')" title="Visit the project on GitHub">ℹ️ ABOUT</button>
         <p style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #00ff00; font-size: 12px; text-align: center; opacity: 0.7;">
             Original Game by Sean "th15" Chan © 2007-2009<br>
             HTML5 Adaptation - Community Project
         </p>
     </div>
     
+    <!-- Welcome Screen (First Time) -->
+    <div id="welcomeScreen" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.98); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 200;">
+        <div style="width: 700px; max-height: 90vh; background: rgba(0, 40, 0, 0.95); border: 3px solid #00ff00; padding: 40px; overflow-y: auto; box-shadow: 0 0 50px #00ff00;">
+            <h1 style="color: #00ff00; text-align: center; margin-bottom: 10px; font-size: 42px; text-shadow: 0 0 20px #00ff00;">🚀 WELCOME 🚀</h1>
+            <h2 style="color: #0ff; text-align: center; margin-bottom: 30px; font-size: 20px;">BATTLESHIPS FOREVER - HTML5 Edition</h2>
+            
+            <div style="color: #00ff00; line-height: 1.8; font-size: 15px; margin-bottom: 20px;">
+                <p style="margin-bottom: 15px;">Welcome to the HTML5 recreation of the classic space RTS! This version includes:</p>
+                <ul style="margin-left: 20px; margin-bottom: 20px;">
+                    <li>✅ <strong>Multiple Game Modes</strong> - Sandbox, Skirmish, Grinder, Blockade</li>
+                    <li>✅ <strong>Custom Ship Builder</strong> - Design and save your own ships</li>
+                    <li>✅ <strong>Persistent Save System</strong> - Your settings and ships are saved</li>
+                    <li>✅ <strong>Statistics Tracking</strong> - Track high scores and records</li>
+                    <li>✅ <strong>Original Audio</strong> - All sounds and music from the original</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0, 60, 0, 0.5); border: 1px solid #00ff00; padding: 20px; margin-bottom: 20px;">
+                <h3 style="color: #0ff; margin-bottom: 10px; font-size: 18px;">⚡ QUICK START</h3>
+                <div style="color: #00ff00; line-height: 1.8; font-size: 14px;">
+                    <p><strong>1.</strong> Try <strong>Sandbox Mode</strong> to learn controls</p>
+                    <p><strong>2.</strong> Use <strong>Ship Builder</strong> to create custom designs</p>
+                    <p><strong>3.</strong> Challenge yourself in <strong>Skirmish Modes</strong></p>
+                    <p><strong>4.</strong> Press <strong>❓ Help</strong> button anytime for controls</p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="menu-btn" onclick="game.closeWelcome()" style="width: 80%; font-size: 20px; padding: 18px;">LET'S BEGIN! 🎮</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Game Mode Selection Menu -->
     <div id="gameModeMenu">
         <h3>SELECT SKIRMISH MODE</h3>
         <div class="mode-description-box">
-            <p>Choose your battle:</p>
-            <div class="mode-description-item">
-                <strong>SKIRMISH:</strong> Progressive wave-based combat. Defeat each wave to advance!
+            <p style="font-size: 16px; margin-bottom: 20px;">Choose your battle:</p>
+            <div class="mode-description-item" style="margin-bottom: 15px;">
+                <strong style="font-size: 16px;">🎯 SKIRMISH</strong><br>
+                <span style="color: #888; font-size: 13px;">Progressive wave-based combat. Defeat each wave to advance to the next challenge. Score increases with each wave. Music intensifies at wave 5!</span>
             </div>
-            <div class="mode-description-item">
-                <strong>GRINDER:</strong> Endless survival mode. How long can you last?
+            <div class="mode-description-item" style="margin-bottom: 15px;">
+                <strong style="font-size: 16px;">⚔️ GRINDER</strong><br>
+                <span style="color: #888; font-size: 13px;">Endless survival mode. Enemies spawn continuously. Earn points by time survived and enemies defeated. How long can you last?</span>
             </div>
-            <div class="mode-description-item">
-                <strong>BLOCKADE:</strong> Defend your position! Enemies attack from the right.
+            <div class="mode-description-item" style="margin-bottom: 15px;">
+                <strong style="font-size: 16px;">🛡️ BLOCKADE</strong><br>
+                <span style="color: #888; font-size: 13px;">Defend your position! Waves of enemies attack from the right side. Stand your ground and survive as long as possible.</span>
             </div>
         </div>
-        <button class="menu-btn" onclick="game.startGame('skirmish')">SKIRMISH</button>
-        <button class="menu-btn" onclick="game.startGame('grinder')">GRINDER</button>
-        <button class="menu-btn" onclick="game.startGame('blockade')">BLOCKADE</button>
-        <button class="menu-btn" onclick="game.hideGameModeMenu()" style="margin-top: 20px;">BACK</button>
+        <button class="menu-btn" onclick="game.startGame('skirmish')">🎯 START SKIRMISH</button>
+        <button class="menu-btn" onclick="game.startGame('grinder')">⚔️ START GRINDER</button>
+        <button class="menu-btn" onclick="game.startGame('blockade')">🛡️ START BLOCKADE</button>
+        <button class="menu-btn" onclick="game.hideGameModeMenu()" style="margin-top: 20px;">◀ BACK</button>
     </div>
     
     <!-- Ship Library Menu -->

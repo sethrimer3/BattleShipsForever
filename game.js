@@ -870,6 +870,25 @@ class BattleshipsForeverGame {
         document.getElementById('pauseMenu').classList.remove('active');
         // Use Briefingmusic for main menu - more menu-appropriate than Theme
         this.audio.playMusic('Briefingmusic.ogg');
+        
+        // Show welcome screen on first visit
+        this.checkFirstVisit();
+    }
+    
+    checkFirstVisit() {
+        const hasVisited = localStorage.getItem('bfForever_hasVisited');
+        if (!hasVisited) {
+            // Small delay to let main menu render first
+            setTimeout(() => {
+                document.getElementById('welcomeScreen').style.display = 'flex';
+            }, 500);
+        }
+    }
+    
+    closeWelcome() {
+        this.audio.playSound('buttonClick');
+        localStorage.setItem('bfForever_hasVisited', 'true');
+        document.getElementById('welcomeScreen').style.display = 'none';
     }
     
     initializeDoodads() {
@@ -1383,6 +1402,16 @@ class BattleshipsForeverGame {
     hideStatistics() {
         this.audio.playSound('buttonClick');
         document.getElementById('statisticsMenu').style.display = 'none';
+    }
+    
+    toggleHelp() {
+        this.audio.playSound('buttonClick');
+        const helpOverlay = document.getElementById('helpOverlay');
+        if (helpOverlay.style.display === 'flex') {
+            helpOverlay.style.display = 'none';
+        } else {
+            helpOverlay.style.display = 'flex';
+        }
     }
     
     updateStatisticsDisplay() {
