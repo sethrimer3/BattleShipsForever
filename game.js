@@ -243,6 +243,90 @@ class PersistenceManager {
     }
 }
 
+// Ship Presets - Predefined ship designs for quick deployment
+class ShipPresets {
+    static getPresets() {
+        return {
+            'fighter': {
+                name: "Fighter",
+                description: "Fast and agile with light weapons",
+                team: "player",
+                sections: [
+                    { id: "core_small_01", localX: 0, localY: 0, rotation: 0 },
+                    { id: "cannon_01", localX: -20, localY: -10, rotation: 0 },
+                    { id: "cannon_01", localX: -20, localY: 10, rotation: 0 },
+                    { id: "engine_01", localX: 20, localY: 0, rotation: Math.PI }
+                ]
+            },
+            'destroyer': {
+                name: "Destroyer",
+                description: "Balanced firepower and defense",
+                team: "player",
+                sections: [
+                    { id: "core_medium_01", localX: 0, localY: 0, rotation: 0 },
+                    { id: "cannon_02", localX: -30, localY: -15, rotation: 0 },
+                    { id: "cannon_02", localX: -30, localY: 15, rotation: 0 },
+                    { id: "missile_01", localX: -25, localY: 0, rotation: 0 },
+                    { id: "armor_01", localX: 20, localY: -15, rotation: 0 },
+                    { id: "armor_01", localX: 20, localY: 15, rotation: 0 },
+                    { id: "engine_01", localX: 30, localY: 0, rotation: Math.PI }
+                ]
+            },
+            'cruiser': {
+                name: "Cruiser",
+                description: "Heavy weapons platform",
+                team: "player",
+                sections: [
+                    { id: "core_large_01", localX: 0, localY: 0, rotation: 0 },
+                    { id: "cannon_02", localX: -40, localY: -25, rotation: 0 },
+                    { id: "cannon_02", localX: -40, localY: 25, rotation: 0 },
+                    { id: "cannon_02", localX: -35, localY: 0, rotation: 0 },
+                    { id: "missile_01", localX: -30, localY: -15, rotation: 0 },
+                    { id: "missile_01", localX: -30, localY: 15, rotation: 0 },
+                    { id: "shield_01", localX: 25, localY: 0, rotation: 0 },
+                    { id: "armor_01", localX: 30, localY: -20, rotation: 0 },
+                    { id: "armor_01", localX: 30, localY: 20, rotation: 0 },
+                    { id: "engine_01", localX: 40, localY: -10, rotation: Math.PI },
+                    { id: "engine_01", localX: 40, localY: 10, rotation: Math.PI }
+                ]
+            },
+            'gunship': {
+                name: "Gunship",
+                description: "Rapid-fire weapons specialist",
+                team: "player",
+                sections: [
+                    { id: "core_medium_01", localX: 0, localY: 0, rotation: 0 },
+                    { id: "cannon_01", localX: -25, localY: -20, rotation: 0 },
+                    { id: "cannon_01", localX: -25, localY: -10, rotation: 0 },
+                    { id: "cannon_01", localX: -25, localY: 10, rotation: 0 },
+                    { id: "cannon_01", localX: -25, localY: 20, rotation: 0 },
+                    { id: "armor_01", localX: 20, localY: 0, rotation: 0 },
+                    { id: "engine_01", localX: 30, localY: 0, rotation: Math.PI }
+                ]
+            },
+            'interceptor': {
+                name: "Interceptor",
+                description: "Ultra-fast scout with minimal weapons",
+                team: "player",
+                sections: [
+                    { id: "core_small_01", localX: 0, localY: 0, rotation: 0 },
+                    { id: "cannon_01", localX: -15, localY: 0, rotation: 0 },
+                    { id: "engine_01", localX: 15, localY: -8, rotation: Math.PI },
+                    { id: "engine_01", localX: 15, localY: 8, rotation: Math.PI }
+                ]
+            }
+        };
+    }
+    
+    static getPreset(name) {
+        return this.getPresets()[name] || null;
+    }
+    
+    static getPresetNames() {
+        return Object.keys(this.getPresets());
+    }
+}
+
 class Vector2 {
     constructor(x = 0, y = 0) {
         this.x = x;
@@ -854,10 +938,24 @@ class BattleshipsForeverGame {
         this.setupShipBuilder();
         this.setupMenuSounds();
         
-        // Show main menu initially
-        this.showMainMenu();
+        // Show loading screen, then main menu after brief delay
+        this.hideLoadingScreen();
         
         this.gameLoop();
+    }
+    
+    hideLoadingScreen() {
+        // Simulate loading time and hide loading screen
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('loadingScreen');
+            loadingScreen.style.transition = 'opacity 0.5s ease-out';
+            loadingScreen.style.opacity = '0';
+            
+            setTimeout(() => {
+                loadingScreen.classList.add('hidden');
+                this.showMainMenu();
+            }, 500);
+        }, 1000);
     }
     
     showMainMenu() {

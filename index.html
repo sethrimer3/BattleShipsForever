@@ -408,13 +408,96 @@
             50% { transform: scale(1.1); }
             100% { transform: scale(1); opacity: 1; }
         }
+        
+        /* Fade in animation for menus */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Apply animations to menus */
+        #mainMenu, #gameModeMenu, #optionsMenu, #shipLibraryMenu, #statisticsMenu, #welcomeScreen, #helpOverlay {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .menu-btn {
+            animation: slideIn 0.4s ease-out;
+        }
+        
+        /* Loading screen styles */
+        #loadingScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #000000 0%, #001a00 50%, #000000 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+        }
+        
+        #loadingScreen.hidden {
+            display: none;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(0, 255, 0, 0.1);
+            border-top: 4px solid #00ff00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #00ff00;
+            font-size: 18px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px #00ff00;
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <h1 style="color: #00ff00; font-size: 48px; text-shadow: 0 0 30px #00ff00; margin-bottom: 30px; font-family: 'Courier New', monospace;">BATTLESHIPS FOREVER</h1>
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading assets...</div>
+    </div>
+    
     <div id="ui">
         <div id="controls">
             <button class="btn" onclick="game.toggleShipBuilder()">Ship Builder</button>
-            <button class="btn" onclick="game.spawnPlayerShip()">Deploy Ship</button>
+            <div style="display: inline-block; position: relative;">
+                <button class="btn" onclick="this.nextElementSibling.classList.toggle('active')">Quick Deploy ▼</button>
+                <div id="presetMenu" style="position: absolute; top: 100%; left: 0; background: rgba(0, 0, 0, 0.95); border: 1px solid #00ff00; z-index: 50; min-width: 180px; display: none;">
+                    <button class="btn" onclick="game.spawnPresetShip('fighter'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">⚡ Fighter</button>
+                    <button class="btn" onclick="game.spawnPresetShip('interceptor'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">🚀 Interceptor</button>
+                    <button class="btn" onclick="game.spawnPresetShip('gunship'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">💥 Gunship</button>
+                    <button class="btn" onclick="game.spawnPresetShip('destroyer'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">⚔️ Destroyer</button>
+                    <button class="btn" onclick="game.spawnPresetShip('cruiser'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none;">🛡️ Cruiser</button>
+                </div>
+            </div>
             <div style="display: inline-block; position: relative;">
                 <button class="btn" onclick="this.nextElementSibling.classList.toggle('active')">Spawn Faction ▼</button>
                 <div id="factionMenu" style="position: absolute; top: 100%; left: 0; background: rgba(0, 0, 0, 0.95); border: 1px solid #00ff00; z-index: 50; min-width: 150px;">
