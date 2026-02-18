@@ -402,6 +402,15 @@
             display: block;
         }
         
+        /* Preset Menu Dropdown */
+        #presetMenu {
+            display: none;
+        }
+        
+        #presetMenu.active {
+            display: block;
+        }
+        
         /* Animation for wave complete */
         @keyframes pulse {
             0% { transform: scale(0.8); opacity: 0; }
@@ -490,12 +499,12 @@
             <button class="btn" onclick="game.toggleShipBuilder()">Ship Builder</button>
             <div style="display: inline-block; position: relative;">
                 <button class="btn" onclick="this.nextElementSibling.classList.toggle('active')">Quick Deploy ▼</button>
-                <div id="presetMenu" style="position: absolute; top: 100%; left: 0; background: rgba(0, 0, 0, 0.95); border: 1px solid #00ff00; z-index: 50; min-width: 180px; display: none;">
-                    <button class="btn" onclick="game.spawnPresetShip('fighter'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">⚡ Fighter</button>
-                    <button class="btn" onclick="game.spawnPresetShip('interceptor'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">🚀 Interceptor</button>
-                    <button class="btn" onclick="game.spawnPresetShip('gunship'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">💥 Gunship</button>
-                    <button class="btn" onclick="game.spawnPresetShip('destroyer'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">⚔️ Destroyer</button>
-                    <button class="btn" onclick="game.spawnPresetShip('cruiser'); document.getElementById('presetMenu').style.display='none'" style="width: 100%; text-align: left; border: none;">🛡️ Cruiser</button>
+                <div id="presetMenu" style="position: absolute; top: 100%; left: 0; background: rgba(0, 0, 0, 0.95); border: 1px solid #00ff00; z-index: 50; min-width: 180px;">
+                    <button class="btn" onclick="game.spawnPresetShip('fighter'); document.getElementById('presetMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">⚡ Fighter</button>
+                    <button class="btn" onclick="game.spawnPresetShip('interceptor'); document.getElementById('presetMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">🚀 Interceptor</button>
+                    <button class="btn" onclick="game.spawnPresetShip('gunship'); document.getElementById('presetMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">💥 Gunship</button>
+                    <button class="btn" onclick="game.spawnPresetShip('destroyer'); document.getElementById('presetMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none; border-bottom: 1px solid #004400;">⚔️ Destroyer</button>
+                    <button class="btn" onclick="game.spawnPresetShip('cruiser'); document.getElementById('presetMenu').classList.remove('active')" style="width: 100%; text-align: left; border: none;">🛡️ Cruiser</button>
                 </div>
             </div>
             <div style="display: inline-block; position: relative;">

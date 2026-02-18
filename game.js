@@ -248,6 +248,7 @@ class ShipPresets {
     static getPresets() {
         return {
             'fighter': {
+                version: "1.0",
                 name: "Fighter",
                 description: "Fast and agile with light weapons",
                 team: "player",
@@ -259,6 +260,7 @@ class ShipPresets {
                 ]
             },
             'destroyer': {
+                version: "1.0",
                 name: "Destroyer",
                 description: "Balanced firepower and defense",
                 team: "player",
@@ -273,6 +275,7 @@ class ShipPresets {
                 ]
             },
             'cruiser': {
+                version: "1.0",
                 name: "Cruiser",
                 description: "Heavy weapons platform",
                 team: "player",
@@ -291,6 +294,7 @@ class ShipPresets {
                 ]
             },
             'gunship': {
+                version: "1.0",
                 name: "Gunship",
                 description: "Rapid-fire weapons specialist",
                 team: "player",
@@ -305,6 +309,7 @@ class ShipPresets {
                 ]
             },
             'interceptor': {
+                version: "1.0",
                 name: "Interceptor",
                 description: "Ultra-fast scout with minimal weapons",
                 team: "player",
@@ -1972,6 +1977,36 @@ class BattleshipsForeverGame {
         
         this.ships.push(ship);
         this.updateUI();
+    }
+    
+    spawnPresetShip(presetName) {
+        this.audio.playSound('deploy');
+        
+        const preset = ShipPresets.getPreset(presetName);
+        if (!preset) {
+            console.error(`Preset "${presetName}" not found`);
+            return;
+        }
+        
+        // Load the preset into the ship editor if available
+        if (this.shipEditor) {
+            this.shipEditor.loadShipFromJSON(preset);
+            // Then spawn it
+            const ship = this.shipEditor.createShipFromDesign(
+                this.canvas.width / 2 + this.camera.x,
+                this.canvas.height / 2 + this.camera.y,
+                'player'
+            );
+            
+            if (ship) {
+                this.ships.push(ship);
+                this.updateUI();
+            }
+        } else {
+            // Fallback: create a basic ship if editor not available
+            console.warn('Ship editor not available, spawning basic ship');
+            this.spawnPlayerShip();
+        }
     }
     
     reset() {
